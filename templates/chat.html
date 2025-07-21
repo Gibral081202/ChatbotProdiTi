@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AI Chatbot - Teknik Informatika</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/static/css/output.css">
+    <style>
+        body { font-family: 'Segoe UI', 'Roboto', Arial, sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="bg-white shadow text-center py-4 text-xl font-bold text-gray-800">AI Chatbot - Teknik Informatika</div>
+    <div class="max-w-xl mx-auto flex flex-col min-h-[80vh] pb-28 px-2">
+        <div class="flex-1 flex flex-col gap-4 py-6 overflow-y-auto" id="chat-messages"></div>
+    </div>
+    <form class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 py-3 z-10" id="chat-form" autocomplete="off">
+        <div class="max-w-xl mx-auto flex gap-2 px-2">
+            <input type="text" class="flex-1 border border-gray-300 rounded-full px-4 py-2 focus:ring-2 focus:ring-blue-400 text-base" id="chat-input" placeholder="Ketik pesan..." required autofocus>
+            <button class="w-12 h-12 flex items-center justify-center rounded-full bg-blue-600 text-white text-xl hover:bg-blue-700 transition" type="submit" title="Kirim"><span>&#10148;</span></button>
+        </div>
+    </form>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        const chatMessages = document.getElementById('chat-messages');
+        const chatForm = document.getElementById('chat-form');
+        const chatInput = document.getElementById('chat-input');
+        let chatHistory = [];
+        let isInitialGreetingSent = false;
+        let conversationHasStarted = false;
+        const welcomeMessage = `Selamat datang di Customer Service Program Studi Teknik Informatika! 🎓\n\nSaya adalah asisten AI yang siap membantu Anda dengan informasi seputar Program Studi Teknik Informatika UIN Syarif Hidayatullah Jakarta.\n\n**Layanan yang tersedia:**\n• Informasi kurikulum dan mata kuliah\n• Panduan akademik dan administrasi\n• Informasi dosen dan jadwal\n• Bantuan pendaftaran dan registrasi\n• Panduan PKL dan skripsi\n• Informasi fasilitas dan sarana\n\n**Catatan:** Saya akan memberikan jawaban berdasarkan dokumen resmi Program Studi Teknik Informatika UIN Jakarta. Untuk informasi yang lebih spesifik, silakan hubungi bagian akademik.\n\nSilakan ajukan pertanyaan Anda! 😊`;
+        function formatTime(date) {
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+        function appendMessage(text, sender, ts = new Date()) {
+            const row = document.createElement('div');
+            row.className = 'flex flex-col ' + (sender === 'user' ? 'items-end' : 'items-start');
+            const content = document.createElement('div');
+            content.className = 'max-w-[90%] px-4 py-3 rounded-2xl text-base mb-1 ' + (sender === 'user' ? 'bg-blue-100 text-blue-900' : 'bg-white text-gray-900 border border-gray-200');
+            if (sender === 'bot') {
+                content.innerHTML = marked.parse(text);
+            } else {
+                content.textContent = text;
+            }
+            row.appendChild(content);
+            const meta = document.createElement('div');
+            meta.className = 'text-xs text-gray-400 mt-0.5';
+            meta.textContent = formatTime(ts);
+            row.appendChild(meta);
+            chatMessages.appendChild(row);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        function renderChat() {
+            chatMessages.innerHTML = '';
+            for (const msg of chatHistory) {
+                appendMessage(msg.text, msg.sender, msg.ts);
+            }
+        }
+        function displayWelcomeMessage() {
+            if (!isInitialGreetingSent) {
+                chatHistory.push({ sender: 'bot', text: welcomeMessage, ts: new Date() });
+                appendMessage(welcomeMessage, 'bot', new Date());
+                isInitialGreetingSent = true;
+            }
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            displayWelcomeMessage();
+        });
+        chatForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const userMsg = chatInput.value.trim();
+            if (!userMsg) return;
+            conversationHasStarted = true;
+            chatHistory.push({ sender: 'user', text: userMsg, ts: new Date() });
+            appendMessage(userMsg, 'user', new Date());
+            chatInput.value = '';
+            const loadingRow = document.createElement('div');
+            loadingRow.className = 'flex flex-col items-start';
+            loadingRow.id = 'loading-bot-msg';
+            const loadingContent = document.createElement('div');
+            loadingContent.className = 'max-w-[90%] px-4 py-3 rounded-2xl text-base mb-1 bg-gray-100 text-gray-500 border border-gray-200';
+            loadingContent.innerHTML = '<span class="animate-spin inline-block w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full mr-2"></span> Mengetik...';
+            loadingRow.appendChild(loadingContent);
+            chatMessages.appendChild(loadingRow);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            try {
+                const res = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        message: userMsg,
+                        conversationHasStarted: conversationHasStarted,
+                        isInitialGreetingSent: isInitialGreetingSent
+                    })
+                });
+                const data = await res.json();
+                document.getElementById('loading-bot-msg').remove();
+                chatHistory.push({ sender: 'bot', text: data.response, ts: new Date() });
+                appendMessage(data.response, 'bot', new Date());
+            } catch (err) {
+                document.getElementById('loading-bot-msg').remove();
+                chatHistory.push({ sender: 'bot', text: 'Terjadi kesalahan. Silakan coba lagi.', ts: new Date() });
+                appendMessage('Terjadi kesalahan. Silakan coba lagi.', 'bot', new Date());
+            }
+        });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/static/css/output.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+</head>
+<body class="bg-gray-50 min-h-screen">
+<div class="max-w-6xl mx-auto px-2 sm:px-4 py-4">
+    <div class="flex flex-col sm:flex-row justify-between items-center bg-white rounded-xl shadow-md p-4 mb-6 gap-2">
+        <h2 class="text-2xl font-bold">Admin Dashboard</h2>
+        <form method="post" action="/admin/logout">
+            <button type="submit" class="px-4 py-2 rounded-lg border border-red-500 text-red-600 hover:bg-red-50 transition">Logout</button>
+        </form>
+    </div>
+    <div aria-live="polite" aria-atomic="true" class="relative">
+        <div id="toast-container" class="fixed top-4 right-4 z-50"></div>
+    </div>
+    {% if error %}
+        <div class="bg-red-100 text-red-700 px-4 py-2 rounded mb-2">{{ error }}</div>
+    {% endif %}
+    {% if message %}
+        <div class="bg-green-100 text-green-700 px-4 py-2 rounded mb-2">{{ message }}</div>
+    {% endif %}
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div>
+            <div class="bg-white rounded-xl shadow p-6 mb-6">
+                <h5 class="text-lg font-semibold mb-4">Upload Knowledge Base File</h5>
+                <form id="upload-form" method="post" enctype="multipart/form-data" class="space-y-4">
+                    <input class="block w-full border border-gray-300 rounded-lg px-3 py-2" type="file" name="file" id="file-input" required>
+                    <div class="flex gap-4">
+                        <div class="flex-1">
+                            <label for="chunk-size" class="block font-medium mb-1">Chunk Size</label>
+                            <input type="number" class="block w-full border border-gray-300 rounded-lg px-3 py-2" id="chunk-size" name="chunk_size" value="1000" min="100" max="10000" required>
+                        </div>
+                        <div class="flex-1">
+                            <label for="chunk-overlap" class="block font-medium mb-1">Chunk Overlap</label>
+                            <input type="number" class="block w-full border border-gray-300 rounded-lg px-3 py-2" id="chunk-overlap" name="chunk_overlap" value="200" min="0" max="5000" required>
+                        </div>
+                    </div>
+                    <button type="button" class="w-full py-2 px-4 rounded-lg bg-blue-500 text-white font-semibold hover:bg-blue-600 transition" id="preview-btn">Preview Chunking</button>
+                    <div id="preview-area" class="mb-3 hidden">
+                        <h6 class="font-semibold mb-2">Chunking Preview</h6>
+                        <div id="preview-chunks" class="max-h-60 overflow-auto bg-gray-100 border border-gray-200 p-3 rounded-lg"></div>
+                    </div>
+                    <button class="w-full py-2 px-4 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 transition" type="submit" id="process-btn" disabled>Process and Save to Knowledge Base</button>
+                </form>
+            </div>
+        </div>
+        <div class="flex flex-col gap-6">
+            <div class="bg-white rounded-xl shadow p-6">
+                <h5 class="text-lg font-semibold mb-4">Knowledge Base Files</h5>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm text-left border border-gray-200 rounded-lg overflow-hidden">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="px-4 py-2">Filename</th>
+                                <th class="px-4 py-2">Type</th>
+                                <th class="px-4 py-2">Uploaded At</th>
+                                <th class="px-4 py-2">Status</th>
+                                <th class="px-4 py-2">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for file in files %}
+                            <tr class="border-t border-gray-200">
+                                <td class="px-4 py-2">{{ file.filename }}</td>
+                                <td class="px-4 py-2">{{ file.filetype }}</td>
+                                <td class="px-4 py-2">{{ file.uploaded_at }}</td>
+                                <td class="px-4 py-2">
+                                    {% if file.changed %}
+                                        <span class="inline-block px-2 py-1 rounded bg-yellow-200 text-yellow-800 text-xs">Changed</span>
+                                    {% else %}
+                                        <span class="inline-block px-2 py-1 rounded bg-green-200 text-green-800 text-xs">Up-to-date</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-4 py-2">
+                                    <button class="text-red-600 hover:bg-red-50 rounded p-2" data-bs-toggle="modal" data-bs-target="#deleteModal" data-file-id="{{ file.id }}" data-file-name="{{ file.filename }}" title="Delete this file"><i class="bi bi-trash"></i></button>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow p-6">
+                <h5 class="text-lg font-semibold mb-4">Knowledge Base Status</h5>
+                <div id="kb-status-message" class="mb-3"></div>
+                <div id="embed-progress-bar" class="w-full mb-3 hidden">
+                    <div class="w-full bg-gray-200 rounded-full h-3">
+                        <div id="embed-progress-inner" class="bg-blue-500 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                    <div id="embed-progress-text" class="text-xs text-gray-600 mt-1 text-center"></div>
+                </div>
+                <form id="embed-form" method="post" action="/admin/embed_all">
+                    <button class="w-full py-2 px-4 rounded-lg font-semibold transition text-white" type="submit" id="embed-data-btn">Embed Data</button>
+                </form>
+            </div>
+            <div class="bg-white rounded-xl shadow p-6 mt-4">
+                <h5 class="text-lg font-semibold mb-4">Vector DB Management</h5>
+                <form id="delete-vector-db-form" method="post" action="/admin/delete_vector_db" onsubmit="return confirm('Are you sure you want to delete all contents of the Vector DB? This action cannot be undone.');">
+                    <button class="w-full py-2 px-4 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 transition" type="submit">Delete Vector DB</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <!-- Delete Confirmation Modal -->
+    <div class="fixed z-50 inset-0 flex items-center justify-center bg-black bg-opacity-30 hidden" id="deleteModal">
+      <div class="bg-white rounded-xl shadow-lg w-full max-w-md mx-auto">
+        <div class="flex justify-between items-center border-b px-6 py-4">
+          <h5 class="text-lg font-semibold">Confirm Delete</h5>
+          <button type="button" class="text-gray-400 hover:text-gray-700" data-modal-close="deleteModal">&times;</button>
+        </div>
+        <div class="px-6 py-4">
+          Are you sure you want to delete <span id="modal-file-name" class="font-bold"></span>?
+        </div>
+        <div class="flex justify-end gap-2 px-6 py-4 border-t">
+          <button type="button" class="px-4 py-2 rounded-lg border border-gray-400 text-gray-700 hover:bg-gray-100 transition" data-modal-close="deleteModal">Cancel</button>
+          <button type="button" class="px-4 py-2 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 transition" id="confirm-delete-btn">Delete</button>
+        </div>
+      </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Toast logic (Tailwind style)
+    function showToast(message, type = 'success') {
+        const toastId = 'toast-' + Date.now();
+        const toast = document.createElement('div');
+        toast.className = `flex items-center px-4 py-2 rounded shadow mb-2 text-white ${type === 'success' ? 'bg-green-600' : 'bg-red-600'}`;
+        toast.id = toastId;
+        toast.innerHTML = `<span class='flex-1'>${message}</span><button class='ml-4 text-white' onclick='this.parentElement.remove()'>&times;</button>`;
+        document.getElementById('toast-container').appendChild(toast);
+        setTimeout(() => { if (toast) toast.remove(); }, 3500);
+    }
+    // Modal logic for delete (Tailwind style)
+    function openModal(id) {
+        document.getElementById(id).classList.remove('hidden');
+    }
+    function closeModal(id) {
+        document.getElementById(id).classList.add('hidden');
+    }
+    document.querySelectorAll('[data-bs-toggle="modal"]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.getElementById('modal-file-name').textContent = this.getAttribute('data-file-name');
+            const fileId = this.getAttribute('data-file-id');
+            const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+            confirmDeleteBtn.onclick = function() {
+                deleteFile(fileId);
+            };
+            openModal('deleteModal');
+        });
+    });
+    document.querySelectorAll('[data-modal-close]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            closeModal(this.getAttribute('data-modal-close'));
+        });
+    });
+
+    // Function to refresh the knowledge base table
+    function refreshKnowledgeBaseTable() {
+        fetch('/api/files')
+            .then(response => response.json())
+            .then(data => {
+                const tableBody = document.querySelector('table tbody');
+                if (tableBody && data.files) {
+                    tableBody.innerHTML = '';
+                    data.files.forEach(file => {
+                        const row = document.createElement('tr');
+                        row.className = 'border-t border-gray-200';
+                        row.innerHTML = `
+                            <td class="px-4 py-2">${file.filename}</td>
+                            <td class="px-4 py-2">${file.filetype}</td>
+                            <td class="px-4 py-2">${file.uploaded_at}</td>
+                            <td class="px-4 py-2">
+                                ${file.changed ? 
+                                    '<span class="inline-block px-2 py-1 rounded bg-yellow-200 text-yellow-800 text-xs">Changed</span>' : 
+                                    '<span class="inline-block px-2 py-1 rounded bg-green-200 text-green-800 text-xs">Up-to-date</span>'
+                                }
+                            </td>
+                            <td class="px-4 py-2">
+                                <button class="text-red-600 hover:bg-red-50 rounded p-2" data-bs-toggle="modal" data-bs-target="#deleteModal" data-file-id="${file.id}" data-file-name="${file.filename}" title="Delete this file"><i class="bi bi-trash"></i></button>
+                            </td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                    // Removed per-button event attachment for delete buttons here
+                }
+            })
+            .catch(error => {
+                console.error('Error refreshing knowledge base table:', error);
+            });
+    }
+
+    // Function to delete a file
+    function deleteFile(fileId) {
+        fetch(`/admin/delete/${fileId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                showToast('File deleted successfully!', 'success');
+                closeModal('deleteModal');
+                // Refresh the knowledge base table
+                refreshKnowledgeBaseTable();
+            } else {
+                throw new Error('Delete failed');
+            }
+        })
+        .catch(error => {
+            showToast('Delete failed. Please try again.', 'danger');
+            console.error('Error deleting file:', error);
+        });
+    }
+
+    // Polling and embed progress
+    function pollKBStatus() {
+        fetch('/api/kb_status')
+            .then(response => response.json())
+            .then(data => {
+                const statusMsg = document.getElementById('kb-status-message');
+                const embedBtn = document.getElementById('embed-data-btn');
+                if (data.status === 'active') {
+                    statusMsg.innerHTML = '<span class="inline-block px-2 py-1 rounded bg-green-200 text-green-800 text-xs">Knowledge base is up to date and active.</span>';
+                    embedBtn.disabled = true;
+                    embedBtn.className = 'w-full py-2 px-4 rounded-lg font-semibold transition text-white bg-gray-400 cursor-not-allowed';
+                } else {
+                    statusMsg.innerHTML = '<span class="inline-block px-2 py-1 rounded bg-yellow-200 text-yellow-800 text-xs">Knowledge base has been modified. Re-embedding is required.</span>';
+                    embedBtn.disabled = false;
+                    embedBtn.className = 'w-full py-2 px-4 rounded-lg font-semibold transition text-white bg-blue-600 hover:bg-blue-700';
+                }
+            });
+    }
+
+    function pollEmbedProgress() {
+        fetch('/admin/embed_progress')
+            .then(response => response.json())
+            .then(data => {
+                const progressBar = document.getElementById('embed-progress-bar');
+                const progressInner = document.getElementById('embed-progress-inner');
+                const progressText = document.getElementById('embed-progress-text');
+                const embedBtn = document.getElementById('embed-data-btn');
+                if (data.status === 'running' || data.status === 'starting') {
+                    progressBar.classList.remove('hidden');
+                    progressInner.style.width = (data.progress || 0) + '%';
+                    progressText.textContent = data.message || 'Embedding in progress...';
+                    embedBtn.disabled = true;
+                    embedBtn.className = 'w-full py-2 px-4 rounded-lg font-semibold transition text-white bg-gray-400 cursor-not-allowed';
+                } else {
+                    progressBar.classList.add('hidden');
+                    progressInner.style.width = '0%';
+                    progressText.textContent = '';
+                }
+            });
+    }
+    pollKBStatus();
+    pollEmbedProgress();
+    setInterval(pollKBStatus, 3000);
+    setInterval(pollEmbedProgress, 1500);
+    document.getElementById('embed-form').addEventListener('submit', function() {
+        setTimeout(() => pollEmbedProgress(), 500);
+    });
+
+    // --- Chunking Preview Logic ---
+    const previewBtn = document.getElementById('preview-btn');
+    const processBtn = document.getElementById('process-btn');
+    const previewArea = document.getElementById('preview-area');
+    const previewChunks = document.getElementById('preview-chunks');
+    const uploadForm = document.getElementById('upload-form');
+    const fileInput = document.getElementById('file-input');
+    let previewed = false;
+
+    previewBtn.addEventListener('click', function() {
+        const chunkSize = document.getElementById('chunk-size').value;
+        const chunkOverlap = document.getElementById('chunk-overlap').value;
+        if (!fileInput.files.length) {
+            showToast('Please select a file first.', 'danger');
+            return;
+        }
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+        formData.append('chunk_size', chunkSize);
+        formData.append('chunk_overlap', chunkOverlap);
+        previewBtn.disabled = true;
+        previewBtn.innerText = 'Loading...';
+        fetch('/api/v1/preview-chunking', {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            previewBtn.disabled = false;
+            previewBtn.innerText = 'Preview Chunking';
+            if (data.success) {
+                if (data.preview_chunks && data.preview_chunks.length > 0) {
+                    previewArea.classList.remove('hidden');
+                    previewChunks.innerHTML = '';
+                    data.preview_chunks.forEach(chunk => {
+                        const div = document.createElement('div');
+                        div.className = 'mb-2';
+                        div.innerHTML = `<b>Chunk ${chunk.chunk_number}:</b><pre class='whitespace-pre-wrap'>${chunk.content}</pre>`;
+                        previewChunks.appendChild(div);
+                    });
+                    processBtn.disabled = false;
+                    previewed = true;
+                } else {
+                    previewArea.classList.remove('hidden');
+                    previewChunks.innerHTML = `<div class='text-yellow-700'>No preview chunks could be generated. The file may not contain extractable text or may be scanned images.</div>`;
+                    processBtn.disabled = true;
+                    previewed = false;
+                }
+            } else {
+                previewArea.classList.remove('hidden');
+                previewChunks.innerHTML = `<div class='text-red-700'>${data.error || 'Preview failed.'}</div>`;
+                processBtn.disabled = true;
+                previewed = false;
+            }
+        })
+        .catch(err => {
+            previewBtn.disabled = false;
+            previewBtn.innerText = 'Preview Chunking';
+            previewArea.classList.remove('hidden');
+            previewChunks.innerHTML = `<div class='text-red-700'>Preview failed. Please try again.</div>`;
+            processBtn.disabled = true;
+            previewed = false;
+        });
+    });
+    // Prevent form submit if preview not done
+    uploadForm.addEventListener('submit', function(e) {
+        if (!previewed) {
+            e.preventDefault();
+            showToast('Please preview chunking before processing.', 'danger');
+            return;
+        }
+        e.preventDefault();
+        const formData = new FormData(uploadForm);
+        processBtn.disabled = true;
+        processBtn.innerText = 'Uploading...';
+        fetch('/admin', {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => {
+            if (!res.ok) {
+                throw new Error('Upload failed');
+            }
+            return res.text();
+        })
+        .then(html => {
+            showToast('File uploaded successfully!', 'success');
+            fileInput.value = '';
+            previewed = false;
+            previewArea.classList.add('hidden');
+            previewChunks.innerHTML = '';
+            processBtn.disabled = true;
+            processBtn.innerText = 'Process and Save to Knowledge Base';
+            // Refresh the knowledge base table
+            refreshKnowledgeBaseTable();
+        })
+        .catch(err => {
+            showToast('Upload failed. Please try again.', 'danger');
+            processBtn.disabled = false;
+            processBtn.innerText = 'Process and Save to Knowledge Base';
+        });
+    });
+
+    // Event delegation for delete buttons in the knowledge base table
+    const tableBody = document.querySelector('table tbody');
+    if (tableBody) {
+        tableBody.addEventListener('click', function(event) {
+            const btn = event.target.closest('[data-bs-toggle="modal"]');
+            if (btn) {
+                document.getElementById('modal-file-name').textContent = btn.getAttribute('data-file-name');
+                const fileId = btn.getAttribute('data-file-id');
+                const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+                confirmDeleteBtn.onclick = function() {
+                    deleteFile(fileId);
+                };
+                openModal('deleteModal');
+            }
+        });
+    }
+});
+</script>
+{% if message %}<script>showToast({{ message|tojson|safe }}, 'success');</script>{% endif %}
+{% if error %}<script>showToast({{ error|tojson|safe }}, 'danger');</script>{% endif %}
+</body>
+</html> 

@@ -1,0 +1,19 @@
+# Environment variables
+.env
+
+# Python virtual environment
+myenv/
+venv/
+*/myenv/
+*/venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Database & Vector Store
+instance/
+vector_db/
+
+# Node.js dependencies
+node_modules/

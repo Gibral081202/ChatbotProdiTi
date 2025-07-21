@@ -1,0 +1,16 @@
+{
+  "name": "chatbot-ai",
+  "version": "1.0.0",
+  "description": "AI Chatbot with Tailwind CSS",
+  "scripts": {
+    "build": "tailwindcss -i ./src/input.css -o ./static/css/output.css --watch",
+    "build-prod": "tailwindcss -i ./src/input.css -o ./static/css/output.css --minify"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.0"
+  },
+  "main": "tailwind.config.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

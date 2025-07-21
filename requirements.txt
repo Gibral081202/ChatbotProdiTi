@@ -1,0 +1,17 @@
+langchain
+langchain-google-genai
+langchain-community
+langchain-ollama
+ollama
+faiss-cpu
+flask
+twilio
+python-dotenv
+gunicorn
+PyMuPDF
+pandas
+Flask-Login
+Flask-SQLAlchemy
+click
+nomic 
+black 
