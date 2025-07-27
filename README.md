@@ -1,272 +1,355 @@
-# RAG WhatsApp & Web Chatbot for Academic Customer Service - Version 1.4.3
+# RAG WhatsApp & Web Chatbot untuk Layanan Pelanggan Akademik - Versi 1.4.5
 
-## Description
+## Deskripsi
 
-This project is an AI-powered chatbot system designed for the Program Studi Teknik Informatika at UIN Syarif Hidayatullah Jakarta. It provides academic customer service via WhatsApp (using both Twilio and WAHA), and a web interface. The chatbot leverages Retrieval-Augmented Generation (RAG) with document ingestion (PDF, TXT, CSV), vector search (FAISS), and advanced LLMs (Google Gemini via LangChain). An admin dashboard allows for document management, embedding, and monitoring.
+Proyek ini adalah sistem chatbot AI yang dirancang untuk Program Studi Teknik Informatika di UIN Syarif Hidayatullah Jakarta. Sistem ini menyediakan layanan pelanggan akademik melalui **integrasi WhatsApp ganda** (Twilio dan WAHA), dan antarmuka web modern. Chatbot ini memanfaatkan **Retrieval-Augmented Generation (RAG)** dengan pemrosesan dokumen (PDF, TXT, CSV), **pencarian vektor hibrida** (FAISS), dan LLM canggih (Google Gemini 2.0 Flash via LangChain). **Dashboard admin** memungkinkan pengelolaan dokumen, embedding, dan pemantauan dengan pelacakan kemajuan real-time.
 
-## Features
+## 🚀 Fitur Utama
 
-- 🤖 **Dual WhatsApp Integration**: Twilio and WAHA (WhatsApp HTTP API)
-- 💬 **Web Chat Interface**: Modern, responsive chat UI with Tailwind CSS
-- 🗂️ **Admin Dashboard**: File upload, embedding, and knowledge base management
-- 🔍 **Advanced RAG Pipeline**: Hybrid retrieval with semantic and keyword search
-- 📄 **Document Ingestion**: PDF, TXT, CSV with chunking preview
-- 🧠 **Google Gemini LLM** and **Nomic Atlas embeddings**
-- 🏷️ **User Authentication**: Admin login with session management
-- 📦 **Environment-based Configuration**: Flexible setup for different deployments
-- 🩺 **Health and Test Endpoints**: System monitoring and diagnostics
-- 🎨 **Production-ready Tailwind CSS**: Local build, no CDN dependencies
-- 🔄 **Real-time File Watching**: Automatic knowledge base invalidation
-- 📊 **Progress Tracking**: Embedding progress with real-time updates
-- 🎯 **Jina AI Reranking**: Optional document reranking for better relevance
+### 🤖 **Integrasi WhatsApp Ganda**
+- **Twilio WhatsApp**: Integrasi berbasis webhook tradisional
+- **WAHA (WhatsApp HTTP API)**: Integrasi WhatsApp langsung tanpa ketergantungan Twilio
+- **Perutean pesan cerdas**: Penanganan otomatis kedua platform
+- **Sistem perintah**: Perintah `/info`, `/help`, `/status`
 
-## Project Structure
+### 💬 **Antarmuka Web Chat Modern**
+- **Pesan real-time** dengan AJAX
+- **Dukungan Markdown** untuk pemformatan teks kaya
+- **Riwayat percakapan** dan manajemen sesi
+- **Desain responsif** dengan Tailwind CSS
+- **Indikator loading** dan penanganan error
+
+### 🗂️ **Dashboard Admin Canggih**
+- **Upload file drag-and-drop** dengan preview chunking
+- **Kemajuan embedding real-time** dengan progress bar
+- **Pengelolaan basis pengetahuan** dengan pemantauan status file
+- **Penghapusan dokumen** dan manajemen vector store
+- **Autentikasi aman** dengan Flask-Login
+
+### 🔍 **Pipeline RAG Canggih**
+- **Retrieval hibrida**: Menggabungkan pencarian semantik (vektor) dan pencarian kata kunci
+- **Preview chunking dokumen**: Lihat bagaimana dokumen akan dibagi sebelum embedding
+- **Dukungan multi-format**: PDF, TXT, CSV dengan pemrosesan cerdas
+- **Reranking Jina AI opsional**: Skoring relevansi dokumen canggih
+- **Pelacakan konteks**: Fitur "Jelaskan Lebih Jelas" untuk pertanyaan lanjutan
+
+### 🧠 **Model AI Canggih**
+- **Google Gemini 2.0 Flash**: LLM terbaru untuk generasi respons
+- **Embedding Nomic Atlas**: Embedding semantik berkualitas tinggi
+- **Optimasi bahasa Indonesia**: Prompt khusus untuk konteks akademik
+- **Memori percakapan**: Respons lanjutan yang sadar konteks
+
+### 🎨 **UI Siap Produksi**
+- **Tailwind CSS**: Desain modern dan responsif
+- **Build CSS lokal**: Tanpa ketergantungan CDN
+- **Aset produksi terkompresi**: Dioptimalkan untuk performa
+- **Kompatibilitas lintas platform**: Berfungsi di desktop dan mobile
+
+## 📁 Struktur Proyek
 
 ```
-Chatbot AI All Using API Ver 1.4.3/
+Chatbot AI All Using API Ver 1.4.5/
 │
-├── app/                  # Core backend application code
-│   ├── __init__.py       # Package initialization and Flask extensions
-│   ├── core.py           # Main RAG logic, chat handling, embedding, and system info
-│   ├── models.py         # Database models, LLM and embedding loader
-│   └── vector_store.py   # Vector store (FAISS) creation, loading, and hybrid retrieval
+├── app/                          # Aplikasi backend inti
+│   ├── __init__.py              # Inisialisasi paket dan ekstensi Flask
+│   ├── core.py                  # Logika RAG utama, penanganan chat, embedding
+│   ├── models.py                # Model database, loader LLM dan embedding
+│   └── vector_store.py          # Operasi vector store dan retrieval hibrida
 │
-├── main_whatsapp.py      # Main Flask app: WhatsApp, web chat, admin dashboard, API endpoints
-├── requirements.txt      # Python dependencies
-├── env.example           # Example environment variables
-├── README.md             # Project documentation
+├── main_whatsapp.py             # Aplikasi Flask utama dengan semua endpoint
+├── requirements.txt             # Dependensi Python
+├── env.example                  # Template variabel lingkungan
+├── README.md                    # Dokumentasi proyek
 │
-├── documents/            # Folder for user-uploaded PDF, TXT, CSV files (knowledge base)
-├── vector_db/            # FAISS vector store files (auto-generated)
+├── documents/                   # Dokumen basis pengetahuan (PDF, TXT, CSV)
+├── vector_db/                   # Vector store FAISS (dibuat otomatis)
 ├── instance/
-│   └── app.db            # SQLite database (auto-generated)
+│   └── app.db                   # Database SQLite (dibuat otomatis)
 │
-├── templates/            # HTML templates for web chat and admin dashboard
-│   ├── chat.html         # Web chat UI with real-time messaging
-│   ├── admin_dashboard.html # Admin dashboard UI with file management
-│   └── admin_login.html  # Admin login page
+├── templates/                   # Template HTML
+│   ├── chat.html               # Antarmuka web chat
+│   ├── admin_dashboard.html    # Dashboard admin dengan pengelolaan file
+│   └── admin_login.html        # Autentikasi admin
 │
 ├── static/
 │   └── css/
-│       └── output.css    # Production Tailwind CSS (auto-generated)
+│       └── output.css          # Tailwind CSS produksi (dibuat otomatis)
 │
 ├── src/
-│   └── input.css         # Tailwind CSS entry point
+│   └── input.css               # Entry point Tailwind CSS
 │
-├── tailwind.config.js    # Tailwind CSS configuration
-├── package.json          # Node.js/Tailwind build config
-├── package-lock.json     # Node.js lockfile
-├── build_css.py          # Python script to build Tailwind CSS
+├── tailwind.config.js          # Konfigurasi Tailwind
+├── package.json                # Dependensi Node.js untuk Tailwind
+├── package-lock.json           # Lockfile Node.js
+├── build_css.py                # Script Python untuk build CSS
 │
-├── functions/            # (Reserved for custom functions/scripts)
-├── myenv/                # Python virtual environment (not tracked in git)
+├── functions/                   # Fungsi/script kustom (dicadangkan)
+├── myenv/                       # Lingkungan virtual Python
 │
-└── ...                   # Other config/cache folders (.gitignore, .mypy_cache, etc.)
+└── ...                         # Folder konfigurasi dan cache
 ```
 
-**Key Components:**
-- **app/**: All core backend logic, including RAG pipeline, document processing, and database models.
-- **main_whatsapp.py**: Flask app entry point. Handles WhatsApp and web chat endpoints, admin dashboard, and API routes.
-- **documents/**: Place your academic documents here for ingestion and embedding.
-- **vector_db/**: Stores the FAISS vector index for fast semantic search (auto-generated).
-- **instance/app.db**: SQLite database for admin users and file tracking (auto-generated).
-- **templates/**: HTML templates for the web chat and admin dashboard.
-- **static/css/output.css**: Production-ready Tailwind CSS (auto-generated, do not edit by hand).
-- **src/input.css**: Tailwind CSS entry point (edit this to add custom CSS or Tailwind directives).
-- **tailwind.config.js**: Tailwind CSS configuration (controls which files are scanned for classes).
-- **package.json**: Node.js config for Tailwind build scripts.
-- **build_css.py**: Python script to build Tailwind CSS (alternative to npm scripts).
-- **functions/**: (Optional) For custom scripts or extensions.
-- **myenv/**: Your Python virtual environment (should not be committed to version control).
+## 🛠️ Instalasi
 
-## Installation
+### Prasyarat
+- **Python 3.8+**
+- **Node.js 16+** (untuk Tailwind CSS)
+- **API Keys**: Google Gemini, Nomic Atlas (wajib), Jina AI (opsional)
 
-1. **Clone the repository:**
+### Setup Langkah demi Langkah
+
+1. **Clone dan navigasi ke proyek:**
    ```bash
    git clone <your-repo-url>
-   cd "Chatbot AI All Using API Ver 1.4.3"
+   cd "Chatbot AI All Using API Ver 1.4.5"
    ```
 
-2. **Create and activate a virtual environment (recommended):**
+2. **Buat dan aktifkan lingkungan virtual:**
    ```bash
    python -m venv myenv
-   source myenv/bin/activate  # On Windows: myenv\Scripts\activate
+   source myenv/bin/activate  # Di Windows: myenv\Scripts\activate
    ```
 
-3. **Install Python dependencies:**
+3. **Instal dependensi Python:**
    ```bash
    pip install -r requirements.txt
    ```
 
-4. **Set up environment variables:**
-   - Copy `env.example` to `.env` and fill in your API keys and credentials:
-     ```bash
-     cp env.example .env
-     ```
-   - Edit `.env` with your API keys:
+4. **Konfigurasi variabel lingkungan:**
+   ```bash
+   cp env.example .env
+   ```
+   
+   Edit `.env` dengan API key Anda:
+   ```env
+   # Wajib
+   GOOGLE_API_KEY="your_google_gemini_api_key"
+   NOMIC_API_KEY="your_nomic_atlas_api_key"
+   
+   # Opsional
+   JINA_API_KEY="your_jina_rerank_api_key"
+   SECRET_KEY="your_flask_secret_key"
+   DATABASE_URL="sqlite:///app.db"
+   PORT=5000
+   ```
 
-   **Required Environment Variables:**
-   | Variable               | Description                                | Required For           |
-   |------------------------|---------------------------------------------|-----------------------|
-   | `GOOGLE_API_KEY`       | Google Gemini LLM API key                   | LLM (Gemini)          |
-   | `NOMIC_API_KEY`        | Nomic Atlas API key for embeddings          | Embedding (Nomic)     |
-
-   **Optional Environment Variables:**
-   | Variable               | Description                                | Required For           |
-   |------------------------|---------------------------------------------|-----------------------|
-   | `JINA_API_KEY`         | Jina AI API key for reranking               | Rerank (Jina, optional)|
-   | `SECRET_KEY`           | Flask secret key (auto-generated if not set)| Session security       |
-   | `DATABASE_URL`         | Database URL (defaults to SQLite)           | Database               |
-   | `PORT`                 | Server port (defaults to 5000)              | Server configuration   |
-
-   > **Note**: Only `GOOGLE_API_KEY` and `NOMIC_API_KEY` are strictly required for basic operation. Add `JINA_API_KEY` for advanced document reranking if desired.
-
-5. **Prepare documents:**
-   - Place your PDF, TXT, or CSV files in the `documents/` folder.
-
-6. **Initialize the database and admin user:**
+5. **Inisialisasi database dan buat user admin:**
    ```bash
    flask --app main_whatsapp.py init-db
    ```
 
-7. **Install Node.js and npm (for Tailwind CSS build):**
-   - Download and install from https://nodejs.org/
-
-8. **Install Tailwind CSS dependencies:**
+6. **Instal dependensi Tailwind CSS:**
    ```bash
    npm install
    ```
 
-9. **Build Tailwind CSS for production:**
-   - **Option 1: Using npm script**
-     ```bash
-     npm run build-prod
-     ```
-   - **Option 2: Using Python script**
-     ```bash
-     python build_css.py
-     ```
-   - This will generate/update `static/css/output.css` for use in your templates.
+7. **Build CSS produksi:**
+   ```bash
+   # Opsi 1: Menggunakan npm
+   npm run build-prod
+   
+   # Opsi 2: Menggunakan script Python
+   python build_css.py
+   ```
 
-10. **Run the application:**
-    ```bash
-    python main_whatsapp.py
-    ```
+8. **Tambahkan dokumen akademik Anda:**
+   - Letakkan file PDF, TXT, atau CSV di folder `documents/`
+   - Format yang didukung: Panduan akademik, katalog mata kuliah, daftar dosen, dll.
 
-## Usage
+9. **Jalankan aplikasi:**
+   ```bash
+   python main_whatsapp.py
+   ```
 
-### Web Chat Interface
-- **URL:** [http://localhost:5000/chat](http://localhost:5000/chat)
-- **Features:** Real-time messaging, markdown support, conversation history
+## 🎯 Penggunaan
 
-### WhatsApp Integration
+### Antarmuka Web Chat
+- **URL:** `http://localhost:5000/chat`
+- **Fitur:** Pesan real-time, dukungan markdown, riwayat percakapan
+- **Bahasa:** Indonesia (dioptimalkan untuk konteks akademik)
 
-#### Option 1: Twilio WhatsApp
-- **Endpoint:** `/whatsapp` or `/webhook`
-- **Configuration:** Point your Twilio WhatsApp webhook to your server's `/whatsapp` endpoint
-- **Commands:** `/info`, `/help`, `/status`
+### Integrasi WhatsApp
 
-#### Option 2: WAHA (WhatsApp HTTP API)
+#### Twilio WhatsApp
+- **Endpoint:** `/whatsapp` atau `/webhook`
+- **Setup:** Konfigurasi URL webhook Twilio ke server Anda
+- **Perintah:** `/info`, `/help`, `/status`
+
+#### WAHA (WhatsApp HTTP API)
 - **Endpoint:** `/api/whatsapp/webhook`
-- **Configuration:** Configure WAHA to send webhooks to this endpoint
-- **Features:** Direct WhatsApp integration without Twilio
+- **Setup:** Konfigurasi WAHA untuk mengirim webhook ke endpoint ini
+- **Fitur:** Integrasi WhatsApp langsung tanpa Twilio
 
-### Admin Dashboard
-- **URL:** [http://localhost:5000/admin](http://localhost:5000/admin)
-- **Features:**
-  - File upload with chunking preview
-  - Knowledge base management
-  - Real-time embedding progress
-  - File status monitoring
-  - Document deletion
+### Dashboard Admin
+- **URL:** `http://localhost:5000/admin`
+- **Fitur:**
+  - Upload file dengan preview chunking
+  - Kemajuan embedding real-time
+  - Pengelolaan basis pengetahuan
+  - Penghapusan dokumen dan manajemen vector store
 
-### API Endpoints
+### Endpoint API
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/` | GET | Home page with system information |
-| `/chat` | GET/POST | Web chat interface |
-| `/admin` | GET/POST | Admin dashboard |
-| `/admin/login` | GET/POST | Admin login |
-| `/api/chat` | POST | Chat API for external integration |
-| `/api/files` | GET | Get knowledge base files |
-| `/api/kb_status` | GET | Knowledge base status |
-| `/api/v1/preview-chunking` | POST | Preview document chunking |
-| `/health` | GET | Health check endpoint |
-| `/test` | GET | System test endpoint |
+| Endpoint | Method | Deskripsi |
+|----------|--------|-----------|
+| `/` | GET | Halaman beranda dengan informasi sistem |
+| `/chat` | GET/POST | Antarmuka web chat |
+| `/admin` | GET/POST | Dashboard admin |
+| `/admin/login` | GET/POST | Autentikasi admin |
+| `/api/chat` | POST | API chat untuk integrasi eksternal |
+| `/api/files` | GET | File basis pengetahuan |
+| `/api/kb_status` | GET | Status basis pengetahuan |
+| `/api/v1/preview-chunking` | POST | Preview chunking dokumen |
+| `/whatsapp` | POST | Webhook WhatsApp Twilio |
+| `/api/whatsapp/webhook` | POST | Webhook WhatsApp WAHA |
+| `/health` | GET | Health check |
+| `/test` | GET | Test sistem |
 
-### Special Commands (WhatsApp)
-- `/info` or `info` - System information and document status
-- `/help` or `help` - Help and available services
-- `/status` or `status` - System status
+### Perintah Khusus
+- `/info` atau `info` - Informasi sistem dan status dokumen
+- `/help` atau `help` - Bantuan dan layanan yang tersedia
+- `/status` atau `status` - Status sistem
+- `Jelaskan Lebih Jelas` - Dapatkan penjelasan lebih detail dari respons sebelumnya
 
-## Features in Detail
+## 🔧 Fitur Canggih
 
-### RAG Pipeline
-- **Document Processing:** PDF, TXT, CSV with intelligent chunking
-- **Embedding:** Nomic Atlas embeddings for semantic search
-- **Retrieval:** Hybrid approach combining semantic and keyword search
-- **Reranking:** Optional Jina AI reranking for improved relevance
-- **LLM:** Google Gemini 2.0 Flash for response generation
+### Detail Pipeline RAG
+- **Pemrosesan Dokumen:** Chunking cerdas dengan ukuran/overlap yang dapat dikonfigurasi
+- **Retrieval Hibrida:** Menggabungkan pencarian semantik dengan pencocokan kata kunci
+- **Reranking:** Reranking Jina AI opsional untuk relevansi yang lebih baik
+- **Memori Konteks:** Melacak konteks percakapan untuk pertanyaan lanjutan
 
-### Admin Dashboard Features
-- **File Upload:** Drag-and-drop with chunking preview
-- **Progress Tracking:** Real-time embedding progress with progress bars
-- **File Management:** View, delete, and monitor knowledge base files
-- **Status Monitoring:** Knowledge base health and embedding status
-- **Responsive Design:** Works on desktop and mobile devices
+### Fitur Dashboard Admin
+- **Upload File:** Drag-and-drop dengan preview chunking
+- **Pelacakan Kemajuan:** Kemajuan embedding real-time dengan indikator visual
+- **Pengelolaan File:** Lihat, hapus, dan pantau file basis pengetahuan
+- **Manajemen Vector Store:** Hapus dan rebuild database vektor
+- **Desain Responsif:** Berfungsi di desktop dan mobile
 
-### Security Features
-- **Admin Authentication:** Secure login system
-- **Session Management:** Flask-Login integration
-- **File Validation:** Secure file upload with type checking
-- **Environment Variables:** Secure configuration management
+### Fitur Keamanan
+- **Autentikasi Admin:** Login aman dengan hashing password
+- **Manajemen Sesi:** Integrasi Flask-Login
+- **Validasi File:** Upload file aman dengan pengecekan tipe
+- **Variabel Lingkungan:** Manajemen konfigurasi yang aman
 
-### Performance Features
-- **File Watching:** Automatic knowledge base invalidation on file changes
-- **Caching:** Efficient vector store loading and caching
-- **Background Processing:** Non-blocking embedding operations
-- **Optimized CSS:** Minified Tailwind CSS for production
+### Fitur Performa
+- **Pemrosesan Background:** Operasi embedding non-blocking
+- **File Watching:** Invalidasi basis pengetahuan otomatis
+- **Caching:** Loading dan caching vector store yang efisien
+- **CSS Teroptimasi:** Tailwind CSS terkompresi untuk produksi
 
-## Tailwind CSS Setup (Production)
+## 🎨 Setup Tailwind CSS
 
-- **No CDN is used in production.**
-- All templates reference `/static/css/output.css` for styling.
-- To customize styles, edit `src/input.css` and rebuild.
-- The build process scans all HTML templates and static JS/CSS for Tailwind classes (see `tailwind.config.js`).
-- You can use either the npm scripts or the provided `build_css.py` Python script to build the CSS.
+### Build Produksi
+- **Tanpa ketergantungan CDN** - semua CSS dibangun secara lokal
+- **Output terkompresi** untuk performa optimal
+- **Konfigurasi kustom** di `tailwind.config.js`
+- **Opsi build:**
+  ```bash
+  # Development (mode watch)
+  npm run build
+  
+  # Production (terkompresi)
+  npm run build-prod
+  
+  # Script Python alternatif
+  python build_css.py
+  ```
 
-## Troubleshooting
+### Kustomisasi
+- Edit `src/input.css` untuk menambah style kustom atau direktif Tailwind
+- Modifikasi `tailwind.config.js` untuk mengontrol file mana yang di-scan
+- CSS dibangun otomatis ketika template berubah
 
-### Common Issues
+## 🔍 Troubleshooting
 
-1. **Tailwind CSS not building:**
-   - Ensure Node.js and npm are installed
-   - Run `npm install` to install dependencies
-   - Use `python build_css.py` as an alternative
+### Masalah Umum
 
-2. **Embedding not working:**
-   - Check that `NOMIC_API_KEY` is set in your `.env` file
-   - Ensure documents are in the `documents/` folder
-   - Check the admin dashboard for error messages
+1. **Tailwind CSS tidak terbangun:**
+   ```bash
+   # Pastikan Node.js terinstal
+   node --version
+   
+   # Reinstal dependensi
+   npm install
+   
+   # Gunakan alternatif Python
+   python build_css.py
+   ```
 
-3. **WhatsApp integration issues:**
-   - For Twilio: Verify webhook URL points to `/whatsapp`
-   - For WAHA: Ensure webhook URL points to `/api/whatsapp/webhook`
-   - Check server logs for detailed error messages
+2. **Embedding tidak berfungsi:**
+   - Periksa `NOMIC_API_KEY` di file `.env`
+   - Pastikan dokumen ada di folder `documents/`
+   - Periksa dashboard admin untuk pesan error
+   - Verifikasi izin file
 
-4. **Database issues:**
-   - Run `flask --app main_whatsapp.py init-db` to recreate the database
-   - Ensure the `instance/` directory is writable
+3. **Masalah integrasi WhatsApp:**
+   - **Twilio:** Verifikasi URL webhook mengarah ke `/whatsapp`
+   - **WAHA:** Pastikan URL webhook mengarah ke `/api/whatsapp/webhook`
+   - Periksa log server untuk pesan error detail
+   - Verifikasi API key dan konektivitas jaringan
 
-### Logs and Debugging
-- Check console output for detailed error messages
-- Use `/health` endpoint to verify system status
-- Use `/test` endpoint to test system functionality
-- Monitor admin dashboard for embedding progress and errors
+4. **Masalah database:**
+   ```bash
+   # Buat ulang database
+   flask --app main_whatsapp.py init-db
+   
+   # Periksa izin folder instance
+   ls -la instance/
+   ```
+
+### Alat Debugging
+- **Health check:** `GET /health`
+- **Test sistem:** `GET /test`
+- **Dashboard admin:** Pantau kemajuan embedding dan error
+- **Log konsol:** Pesan error detail dan info debugging
+
+### Optimasi Performa
+- **Caching vector store:** Loading dan penggunaan memori yang efisien
+- **Pemrosesan background:** Operasi non-blocking
+- **File watching:** Update otomatis ketika dokumen berubah
+- **CSS teroptimasi:** Stylesheet terkompresi dan terkompresi
+
+## 📚 Konteks Akademik
+
+Chatbot ini dirancang khusus untuk **Program Studi Teknik Informatika UIN Syarif Hidayatullah Jakarta** dan dapat menangani:
+
+- **Informasi kurikulum** dan katalog mata kuliah
+- **Kebijakan akademik** dan prosedur administrasi
+- **Informasi dosen** dan jadwal mengajar
+- **Panduan registrasi** dan prosedur pendaftaran
+- **Panduan PKL (Praktik Kerja Lapangan)** dan skripsi
+- **Fasilitas kampus** dan layanan mahasiswa
+
+## 🔄 Riwayat Versi
+
+### Versi 1.4.5 (Saat Ini)
+- **Integrasi WhatsApp ganda** (Twilio + WAHA)
+- **Pipeline RAG canggih** dengan retrieval hibrida
+- **Dashboard admin real-time** dengan pelacakan kemajuan
+- **Fungsionalitas preview chunking dokumen**
+- **Optimasi bahasa Indonesia**
+- **Tailwind CSS siap produksi**
+- **Penanganan error komprehensif**
+
+### Versi Sebelumnya
+- **1.4.3**: Integrasi WhatsApp dasar dan pipeline RAG
+- **1.4.0**: Rilis awal dengan fitur web chat dan admin
+
+## 🤝 Kontribusi
+
+1. Fork repository
+2. Buat branch fitur
+3. Lakukan perubahan Anda
+4. Test secara menyeluruh
+5. Submit pull request
+
+## 📄 Lisensi
+
+Proyek ini dilisensikan di bawah Lisensi MIT - lihat file LICENSE untuk detail.
 
 ---
 
-**Version 1.4.3 - Production-ready with dual WhatsApp integration, advanced RAG pipeline, and comprehensive admin dashboard!**
+**Versi 1.4.5 - Chatbot akademik siap produksi dengan integrasi WhatsApp ganda, pipeline RAG canggih, dan dashboard admin komprehensif! 🎓🤖**
 
 

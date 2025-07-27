@@ -23,6 +23,8 @@ import hashlib
 from langchain_community.document_loaders import PyMuPDFLoader
 from langchain.schema import Document
 import pandas as pd
+import requests
+import json
 import shutil
 
 

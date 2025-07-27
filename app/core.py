@@ -158,17 +158,17 @@ def get_response(query: str, user_id: Optional[str] = None, conversation_has_sta
             )
 
         # New user welcome
-        if user_id and is_new_user(user_id):
-            mark_user_as_known(user_id)
-            return format_bot_response(
-                "Halo! 👋 \n\nSelamat datang di Customer Service Program Studi "
-                "Teknik Informatika UIN Syarif Hidayatullah Jakarta. \n\n"
-                "Saya siap membantu Anda dengan informasi seputar kurikulum, "
-                "mata kuliah, dosen, dan administrasi akademik. \n\n"
-                "Silakan ajukan pertanyaan spesifik tentang informasi yang "
-                "Anda butuhkan! 😊",
-                is_successful_answer=False
-            )
+        #if user_id and is_new_user(user_id):
+        #    mark_user_as_known(user_id)
+        #    return format_bot_response(
+        #        "Halo! 👋 \n\nSelamat datang di Customer Service Program Studi "
+        #       "Teknik Informatika UIN Syarif Hidayatullah Jakarta. \n\n"
+        #        "Saya siap membantu Anda dengan informasi seputar kurikulum, "
+        #        "mata kuliah, dosen, dan administrasi akademik. \n\n"
+        #        "Silakan ajukan pertanyaan spesifik tentang informasi yang "
+        #        "Anda butuhkan! 😊",
+        #        is_successful_answer=False
+        #    )
 
         # Jelaskan Lebih Jelas command
         if query_lower.strip() == "jelaskan lebih jelas":
