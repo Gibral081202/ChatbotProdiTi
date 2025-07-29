@@ -377,91 +377,91 @@ Please provide a much more detailed explanation in Indonesian, maintaining the s
     name="UIN Jakarta TI Chatbot Response"
 )
 def get_response(query: str, user_id: Optional[str] = None, conversation_has_started: bool = False, is_initial_greeting_sent: bool = False) -> str:
-    try:
-        query_lower = query.lower().strip()
+    # Handle empty or None query first
+    if not query or not query.strip():
+        return format_bot_response(
+            "Halo! 👋 \n\nSelamat datang di Customer Service Program Studi "
+            "Teknik Informatika UIN Syarif Hidayatullah Jakarta. \n\n"
+            "Saya siap membantu Anda dengan informasi seputar kurikulum, "
+            "mata kuliah, dosen, dan administrasi akademik. \n\n"
+            "Silakan ajukan pertanyaan spesifik tentang informasi yang "
+            "Anda butuhkan! 😊",
+            is_successful_answer=False,
+            is_faq_response=False
+        )
 
-        # Always handle greetings and empty input first
-        if not query or query_lower in [
-            "hi", "hello", "halo", "hai", "selamat pagi", "selamat siang", "selamat malam"
-        ]:
-            return format_bot_response(
-                "Halo! 👋 \n\nSelamat datang di Customer Service Program Studi "
-                "Teknik Informatika UIN Syarif Hidayatullah Jakarta. \n\n"
-                "Saya siap membantu Anda dengan informasi seputar kurikulum, "
-                "mata kuliah, dosen, dan administrasi akademik. \n\n"
-                "Silakan ajukan pertanyaan spesifik tentang informasi yang "
-                "Anda butuhkan! 😊",
-                is_successful_answer=False,
-                is_faq_response=False
-            )
+    query_lower = query.lower().strip()
 
-        # New user welcome
-        #if user_id and is_new_user(user_id):
-        #    mark_user_as_known(user_id)
-        #    return format_bot_response(
-        #        "Halo! 👋 \n\nSelamat datang di Customer Service Program Studi "
-        #       "Teknik Informatika UIN Syarif Hidayatullah Jakarta. \n\n"
-        #        "Saya siap membantu Anda dengan informasi seputar kurikulum, "
-        #        "mata kuliah, dosen, dan administrasi akademik. \n\n"
-        #        "Silakan ajukan pertanyaan spesifik tentang informasi yang "
-        #        "Anda butuhkan! 😊",
-        #        is_successful_answer=False
-        #    )
+    # Handle greetings first
+    if query_lower in [
+        "hi", "hello", "halo", "hai", "selamat pagi", "selamat siang", "selamat malam"
+    ]:
+        return format_bot_response(
+            "Halo! 👋 \n\nSelamat datang di Customer Service Program Studi "
+            "Teknik Informatika UIN Syarif Hidayatullah Jakarta. \n\n"
+            "Saya siap membantu Anda dengan informasi seputar kurikulum, "
+            "mata kuliah, dosen, dan administrasi akademik. \n\n"
+            "Silakan ajukan pertanyaan spesifik tentang informasi yang "
+            "Anda butuhkan! 😊",
+            is_successful_answer=False,
+            is_faq_response=False
+        )
 
-        # Check for "Explain More" triggers
-        explain_more_triggers = [
-            "jelaskan lebih jelas",
-            "explain more",
-            "tell me more",
-            "go into more detail",
-            "jelaskan lebih detail",
-            "jelaskan lebih lanjut",
-            "jelaskan lebih rinci",
-            "jelaskan lebih lengkap",
-            "saya ingin penjelasan lebih lanjut",
-            "can you elaborate",
-            "give me more details",
-            "be more specific",
-            "tell me more about that",
-            "in more detail, please",
-            "elaborate on that"
-        ]
-        
-        if any(query_lower.startswith(trigger) for trigger in explain_more_triggers):
-            return handle_explain_more_request(user_id)
-
-        # Check for FAQ commands and handle FAQ state
+    # Handle FAQ commands (moved to top, no longer conditional on user_id)
+    if query_lower in ["menu faq", "faq", "pertanyaan umum", "daftar pertanyaan"]:
+        faq_list = get_faq_list()
         if user_id:
-            current_faq_context = get_user_faq_context(user_id)
-            
-            # Handle "Menu FAQ" command
-            if query_lower in ["menu faq", "faq", "pertanyaan umum", "daftar pertanyaan"]:
-                faq_list = get_faq_list()
-                set_user_faq_context(user_id, "awaiting_faq_selection")
-                return format_bot_response(faq_list, is_successful_answer=False, is_faq_response=True)
-            
-            # Handle FAQ number selection
-            if current_faq_context == "awaiting_faq_selection":
-                try:
-                    # Try to parse the input as a number
-                    question_number = int(query.strip())
-                    faq_answer = get_faq_answer(question_number)
-                    
-                    if faq_answer:
-                        # Reset FAQ context after providing answer
-                        set_user_faq_context(user_id, None)
-                        return format_bot_response(faq_answer, is_successful_answer=True, is_faq_response=True)
-                    else:
-                        return format_bot_response(
-                            f"Nomor {question_number} tidak valid. Silakan pilih nomor dari daftar di atas.",
-                            is_successful_answer=False,
-                            is_faq_response=True
-                        )
-                except ValueError:
-                    # If not a number, reset context and continue with normal processing
-                    set_user_faq_context(user_id, None)
-                    # Continue to normal processing below
+            set_user_faq_context(user_id, "awaiting_faq_selection")
+        return format_bot_response(faq_list, is_successful_answer=False, is_faq_response=True)
 
+    # Handle FAQ number selection (only if user_id is provided)
+    if user_id:
+        current_faq_context = get_user_faq_context(user_id)
+        if current_faq_context == "awaiting_faq_selection":
+            try:
+                # Try to parse the input as a number
+                question_number = int(query.strip())
+                faq_answer = get_faq_answer(question_number)
+                
+                if faq_answer:
+                    # Reset FAQ context after providing answer
+                    set_user_faq_context(user_id, None)
+                    return format_bot_response(faq_answer, is_successful_answer=True, is_faq_response=True)
+                else:
+                    return format_bot_response(
+                        f"Nomor {question_number} tidak valid. Silakan pilih nomor dari daftar di atas.",
+                        is_successful_answer=False,
+                        is_faq_response=True
+                    )
+            except ValueError:
+                # If not a number, reset context and continue with normal processing
+                set_user_faq_context(user_id, None)
+                # Continue to normal processing below
+
+    # Check for "Explain More" triggers
+    explain_more_triggers = [
+        "jelaskan lebih jelas",
+        "explain more",
+        "tell me more",
+        "go into more detail",
+        "jelaskan lebih detail",
+        "jelaskan lebih lanjut",
+        "jelaskan lebih rinci",
+        "jelaskan lebih lengkap",
+        "saya ingin penjelasan lebih lanjut",
+        "can you elaborate",
+        "give me more details",
+        "be more specific",
+        "tell me more about that",
+        "in more detail, please",
+        "elaborate on that"
+    ]
+    
+    if any(query_lower.startswith(trigger) for trigger in explain_more_triggers):
+        return handle_explain_more_request(user_id)
+
+    # Main RAG pipeline logic - only executed if no special commands matched
+    try:
         # Main knowledge base answer logic
         rag_chain, vector_store, embeddings, document_chain = create_rag_chain()
         hybrid_docs = hybrid_retrieve(query, vector_store, embeddings, top_k=6)
