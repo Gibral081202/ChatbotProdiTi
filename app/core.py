@@ -433,7 +433,7 @@ Please provide a much more detailed explanation in Indonesian, maintaining the s
     name="UIN Jakarta TI Chatbot Response"
 )
 def get_response(query: str, user_id: Optional[str] = None, conversation_has_started: bool = False, is_initial_greeting_sent: bool = False) -> str:
-    # Handle empty or None query first
+    # 1. Handle Empty/None Queries First
     if not query or not query.strip():
         return format_bot_response(
             "Halo! 👋 \n\nSelamat datang di Customer Service Program Studi "
@@ -446,24 +446,26 @@ def get_response(query: str, user_id: Optional[str] = None, conversation_has_sta
             is_faq_response=False
         )
 
-        query_lower = query.lower().strip()
+    # 2. Define query_lower Immediately
+    query_lower = query.lower().strip()
 
-    # Handle greetings first
+    # 3. Handle All Special Commands
+    # Handle greetings
     if query_lower in [
-            "hi", "hello", "halo", "hai", "selamat pagi", "selamat siang", "selamat malam"
-        ]:
-            return format_bot_response(
-                "Halo! 👋 \n\nSelamat datang di Customer Service Program Studi "
-                "Teknik Informatika UIN Syarif Hidayatullah Jakarta. \n\n"
-                "Saya siap membantu Anda dengan informasi seputar kurikulum, "
-                "mata kuliah, dosen, dan administrasi akademik. \n\n"
-                "Silakan ajukan pertanyaan spesifik tentang informasi yang "
-                "Anda butuhkan! 😊",
-                is_successful_answer=False,
-                is_faq_response=False
-            )
+        "hi", "hello", "halo", "hai", "selamat pagi", "selamat siang", "selamat malam"
+    ]:
+        return format_bot_response(
+            "Halo! 👋 \n\nSelamat datang di Customer Service Program Studi "
+            "Teknik Informatika UIN Syarif Hidayatullah Jakarta. \n\n"
+            "Saya siap membantu Anda dengan informasi seputar kurikulum, "
+            "mata kuliah, dosen, dan administrasi akademik. \n\n"
+            "Silakan ajukan pertanyaan spesifik tentang informasi yang "
+            "Anda butuhkan! 😊",
+            is_successful_answer=False,
+            is_faq_response=False
+        )
 
-    # Handle FAQ commands (moved to top, no longer conditional on user_id)
+    # Handle FAQ commands (no longer conditional on user_id)
     if query_lower in ["menu faq", "faq", "pertanyaan umum", "daftar pertanyaan"]:
         faq_list = get_faq_list()
         if user_id:
@@ -494,29 +496,29 @@ def get_response(query: str, user_id: Optional[str] = None, conversation_has_sta
                 set_user_faq_context(user_id, None)
                 # Continue to normal processing below
 
-        # Check for "Explain More" triggers
-        explain_more_triggers = [
-            "jelaskan lebih jelas",
-            "explain more",
-            "tell me more",
-            "go into more detail",
-            "jelaskan lebih detail",
-            "jelaskan lebih lanjut",
-            "jelaskan lebih rinci",
-            "jelaskan lebih lengkap",
-            "saya ingin penjelasan lebih lanjut",
-            "can you elaborate",
-            "give me more details",
-            "be more specific",
-            "tell me more about that",
-            "in more detail, please",
-            "elaborate on that"
-        ]
-        
-        if any(query_lower.startswith(trigger) for trigger in explain_more_triggers):
-            return handle_explain_more_request(user_id)
+    # Check for "Explain More" triggers
+    explain_more_triggers = [
+        "jelaskan lebih jelas",
+        "explain more",
+        "tell me more",
+        "go into more detail",
+        "jelaskan lebih detail",
+        "jelaskan lebih lanjut",
+        "jelaskan lebih rinci",
+        "jelaskan lebih lengkap",
+        "saya ingin penjelasan lebih lanjut",
+        "can you elaborate",
+        "give me more details",
+        "be more specific",
+        "tell me more about that",
+        "in more detail, please",
+        "elaborate on that"
+    ]
+    
+    if any(query_lower.startswith(trigger) for trigger in explain_more_triggers):
+        return handle_explain_more_request(user_id)
 
-    # Main RAG pipeline logic - only executed if no special commands matched
+    # 4. Isolate the RAG Pipeline
     try:
         # Main knowledge base answer logic
         rag_chain, vector_store, embeddings, document_chain = create_rag_chain()
