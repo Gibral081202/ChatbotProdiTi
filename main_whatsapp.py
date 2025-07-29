@@ -5,6 +5,7 @@ from app.core import (
     get_embedding_progress,
     get_file_status,
     split_documents_by_type,
+    format_for_whatsapp,
 )
 import os
 from dotenv import load_dotenv
@@ -736,10 +737,13 @@ def send_whatsapp_reply(chat_id, message_text):
     # The new, more common URL for recent WAHA versions
     url = "http://31.97.111.215:3001/api/sendText"
     
+    # Apply the new formatting function here
+    cleaned_text = format_for_whatsapp(message_text)
+    
     # The new payload, which includes the session name
     payload = {
         "chatId": chat_id,
-        "text": message_text,
+        "text": cleaned_text,  # Use the cleaned text
         "session": "default"
     }
     headers = {

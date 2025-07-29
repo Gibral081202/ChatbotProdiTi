@@ -87,6 +87,57 @@ def format_links_for_chat(text: str) -> str:
     return formatted_text
 
 
+def format_for_whatsapp(text: str) -> str:
+    """
+    Format text specifically for WhatsApp to ensure links are clickable.
+    
+    This function converts Markdown links to plain text URLs and cleans up formatting
+    that might interfere with WhatsApp's link detection.
+    
+    Args:
+        text (str): The response text to format for WhatsApp
+        
+    Returns:
+        str: Text formatted for WhatsApp with clean, clickable URLs
+    """
+    if not text:
+        return text
+    
+    # Pattern to match Markdown links: [text](url) or [url](url)
+    # This will match patterns like:
+    # [Link Text](https://example.com)
+    # [https://example.com](https://example.com)
+    markdown_link_pattern = r'\[([^\]]+)\]\(([^)]+)\)'
+    
+    def replace_markdown_link(match):
+        link_text = match.group(1)
+        link_url = match.group(2)
+        
+        # Always return just the URL for WhatsApp
+        return link_url
+    
+    # Replace all Markdown links with just the URL
+    formatted_text = re.sub(markdown_link_pattern, replace_markdown_link, text)
+    
+    # Remove list markers (*, -, etc.) and extra whitespace from each line
+    lines = formatted_text.split('\n')
+    cleaned_lines = []
+    
+    for line in lines:
+        # Remove leading list markers and whitespace
+        cleaned_line = re.sub(r'^[\s\-\*\+]+', '', line.strip())
+        if cleaned_line:  # Only add non-empty lines
+            cleaned_lines.append(cleaned_line)
+    
+    # Join lines back together
+    formatted_text = '\n'.join(cleaned_lines)
+    
+    # Clean up multiple consecutive newlines
+    formatted_text = re.sub(r'\n{3,}', '\n\n', formatted_text)
+    
+    return formatted_text
+
+
 @traceable(
     run_type="chain", 
     name="RAG Chain Creation"
