@@ -36,6 +36,57 @@ embedding_progress: Dict[str, Any] = {
 }
 
 
+def format_links_for_chat(text: str) -> str:
+    """
+    Fix URL formatting in chatbot responses to make links clickable in chat interfaces.
+    
+    This function converts Markdown-formatted links in lists to raw clickable URLs.
+    
+    Args:
+        text (str): The response text to format
+        
+    Returns:
+        str: Text with properly formatted links
+    """
+    if not text:
+        return text
+    
+    # Pattern to match Markdown list items with links: * [text](url)
+    # This will match patterns like:
+    # * [https://example.com](https://example.com)
+    # * [Kurikulum](https://example.com)
+    markdown_link_pattern = r'\* \[([^\]]+)\]\(([^)]+)\)'
+    
+    def replace_markdown_link(match):
+        link_text = match.group(1)
+        link_url = match.group(2)
+        
+        # If the link text is already a URL, just return the URL
+        if link_text.startswith(('http://', 'https://')):
+            return f"{link_url}"
+        else:
+            # If it's descriptive text, format as [text](url)
+            return f"[{link_text}]({link_url})"
+    
+    # Replace all Markdown list links
+    formatted_text = re.sub(markdown_link_pattern, replace_markdown_link, text)
+    
+    # Also handle cases where URLs are just listed without Markdown formatting
+    # Pattern to match lines that start with * and contain URLs
+    url_list_pattern = r'\* (https?://[^\s\n]+)'
+    
+    def replace_url_list(match):
+        url = match.group(1)
+        return f"{url}"
+    
+    formatted_text = re.sub(url_list_pattern, replace_url_list, formatted_text)
+    
+    # Clean up multiple consecutive newlines
+    formatted_text = re.sub(r'\n{3,}', '\n\n', formatted_text)
+    
+    return formatted_text
+
+
 @traceable(
     run_type="chain", 
     name="RAG Chain Creation"
@@ -265,12 +316,14 @@ def format_bot_response(
         is_successful_answer (bool): Whether this is a successful answer from knowledge base
         is_faq_response (bool): Whether this is an FAQ-related response (to avoid adding FAQ trigger)
     """
-    # For FAQ responses, preserve the exact formatting
+    # For FAQ responses, preserve the exact formatting but still fix links
     if is_faq_response:
         # Only normalize line breaks but preserve structure
         answer = answer.replace("\r\n", "\n").replace("\r", "\n")
         # Remove any leftover <context>...</context> tags
         answer = re.sub(r"<context>[\s\S]*?</context>", "", answer, flags=re.IGNORECASE)
+        # Fix URL formatting even for FAQ responses
+        answer = format_links_for_chat(answer)
         return answer
     
     # For regular responses, apply full formatting
@@ -286,6 +339,9 @@ def format_bot_response(
     if not is_faq_response:
         faq_trigger = "\n\n----\nKetik \"Menu FAQ\" untuk daftar pertanyaan umum."
         answer += faq_trigger
+    
+    # Fix URL formatting for chat
+    answer = format_links_for_chat(answer)
     
     return answer
 
@@ -390,22 +446,22 @@ def get_response(query: str, user_id: Optional[str] = None, conversation_has_sta
             is_faq_response=False
         )
 
-    query_lower = query.lower().strip()
+        query_lower = query.lower().strip()
 
     # Handle greetings first
     if query_lower in [
-        "hi", "hello", "halo", "hai", "selamat pagi", "selamat siang", "selamat malam"
-    ]:
-        return format_bot_response(
-            "Halo! 👋 \n\nSelamat datang di Customer Service Program Studi "
-            "Teknik Informatika UIN Syarif Hidayatullah Jakarta. \n\n"
-            "Saya siap membantu Anda dengan informasi seputar kurikulum, "
-            "mata kuliah, dosen, dan administrasi akademik. \n\n"
-            "Silakan ajukan pertanyaan spesifik tentang informasi yang "
-            "Anda butuhkan! 😊",
-            is_successful_answer=False,
-            is_faq_response=False
-        )
+            "hi", "hello", "halo", "hai", "selamat pagi", "selamat siang", "selamat malam"
+        ]:
+            return format_bot_response(
+                "Halo! 👋 \n\nSelamat datang di Customer Service Program Studi "
+                "Teknik Informatika UIN Syarif Hidayatullah Jakarta. \n\n"
+                "Saya siap membantu Anda dengan informasi seputar kurikulum, "
+                "mata kuliah, dosen, dan administrasi akademik. \n\n"
+                "Silakan ajukan pertanyaan spesifik tentang informasi yang "
+                "Anda butuhkan! 😊",
+                is_successful_answer=False,
+                is_faq_response=False
+            )
 
     # Handle FAQ commands (moved to top, no longer conditional on user_id)
     if query_lower in ["menu faq", "faq", "pertanyaan umum", "daftar pertanyaan"]:
@@ -438,27 +494,27 @@ def get_response(query: str, user_id: Optional[str] = None, conversation_has_sta
                 set_user_faq_context(user_id, None)
                 # Continue to normal processing below
 
-    # Check for "Explain More" triggers
-    explain_more_triggers = [
-        "jelaskan lebih jelas",
-        "explain more",
-        "tell me more",
-        "go into more detail",
-        "jelaskan lebih detail",
-        "jelaskan lebih lanjut",
-        "jelaskan lebih rinci",
-        "jelaskan lebih lengkap",
-        "saya ingin penjelasan lebih lanjut",
-        "can you elaborate",
-        "give me more details",
-        "be more specific",
-        "tell me more about that",
-        "in more detail, please",
-        "elaborate on that"
-    ]
-    
-    if any(query_lower.startswith(trigger) for trigger in explain_more_triggers):
-        return handle_explain_more_request(user_id)
+        # Check for "Explain More" triggers
+        explain_more_triggers = [
+            "jelaskan lebih jelas",
+            "explain more",
+            "tell me more",
+            "go into more detail",
+            "jelaskan lebih detail",
+            "jelaskan lebih lanjut",
+            "jelaskan lebih rinci",
+            "jelaskan lebih lengkap",
+            "saya ingin penjelasan lebih lanjut",
+            "can you elaborate",
+            "give me more details",
+            "be more specific",
+            "tell me more about that",
+            "in more detail, please",
+            "elaborate on that"
+        ]
+        
+        if any(query_lower.startswith(trigger) for trigger in explain_more_triggers):
+            return handle_explain_more_request(user_id)
 
     # Main RAG pipeline logic - only executed if no special commands matched
     try:
