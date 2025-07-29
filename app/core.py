@@ -16,6 +16,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema import Document
 import pandas as pd  # type: ignore
 import hashlib
+from langsmith import traceable
 
 # Store user sessions to track new users
 user_sessions: Dict[str, bool] = {}
@@ -35,6 +36,10 @@ embedding_progress: Dict[str, Any] = {
 }
 
 
+@traceable(
+    run_type="chain", 
+    name="RAG Chain Creation"
+)
 def create_rag_chain():
     """
     Create and return a RAG chain with LLM, embeddings, and vector store.
@@ -285,6 +290,10 @@ def format_bot_response(
     return answer
 
 
+@traceable(
+    run_type="chain", 
+    name="Explain More Request Handler"
+)
 def handle_explain_more_request(user_id: Optional[str]) -> str:
     """
     Handle requests for more detailed explanations of the last bot response.
@@ -363,6 +372,10 @@ Please provide a much more detailed explanation in Indonesian, maintaining the s
         )
 
 
+@traceable(
+    run_type="chain", 
+    name="UIN Jakarta TI Chatbot Response"
+)
 def get_response(query: str, user_id: Optional[str] = None, conversation_has_started: bool = False, is_initial_greeting_sent: bool = False) -> str:
     try:
         query_lower = query.lower().strip()

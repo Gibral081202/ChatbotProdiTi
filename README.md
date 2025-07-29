@@ -1,97 +1,67 @@
-# RAG WhatsApp & Web Chatbot untuk Layanan Pelanggan Akademik - Versi 1.4.5
+# 🎓 Customer Service Teknik Informatika UIN Jakarta
 
-## Deskripsi
+Chatbot AI Customer Service untuk Program Studi Teknik Informatika UIN Syarif Hidayatullah Jakarta.
 
-Proyek ini adalah sistem chatbot AI yang dirancang untuk Program Studi Teknik Informatika di UIN Syarif Hidayatullah Jakarta. Sistem ini menyediakan layanan pelanggan akademik melalui **integrasi WhatsApp ganda** (Twilio dan WAHA), dan antarmuka web modern. Chatbot ini memanfaatkan **Retrieval-Augmented Generation (RAG)** dengan pemrosesan dokumen (PDF, TXT, CSV), **pencarian vektor hibrida** (FAISS), dan LLM canggih (Google Gemini 2.0 Flash via LangChain). **Dashboard admin** memungkinkan pengelolaan dokumen, embedding, dan pemantauan dengan pelacakan kemajuan real-time.
+## 🌟 Fitur Utama
 
-## 🚀 Fitur Utama
-
-### 🤖 **Integrasi WhatsApp Ganda**
-- **Twilio WhatsApp**: Integrasi berbasis webhook tradisional
-- **WAHA (WhatsApp HTTP API)**: Integrasi WhatsApp langsung tanpa ketergantungan Twilio
-- **Perutean pesan cerdas**: Penanganan otomatis kedua platform
-
-
-### 💬 **Antarmuka Web Chat Modern**
-- **Pesan real-time** dengan AJAX
-- **Dukungan Markdown** untuk pemformatan teks kaya
-- **Riwayat percakapan** dan manajemen sesi
-- **Desain responsif** dengan Tailwind CSS
-- **Indikator loading** dan penanganan error
-
-### 🗂️ **Dashboard Admin Canggih**
-- **Upload file drag-and-drop** dengan preview chunking
-- **Kemajuan embedding real-time** dengan progress bar
-- **Pengelolaan basis pengetahuan** dengan pemantauan status file
-- **Penghapusan dokumen** dan manajemen vector store
-- **Autentikasi aman** dengan Flask-Login
-
-### 🔍 **Pipeline RAG Canggih**
-- **Retrieval hibrida**: Menggabungkan pencarian semantik (vektor) dan pencarian kata kunci
-- **Preview chunking dokumen**: Lihat bagaimana dokumen akan dibagi sebelum embedding
-- **Dukungan multi-format**: PDF, TXT, CSV dengan pemrosesan cerdas
-- **Reranking Jina AI opsional**: Skoring relevansi dokumen canggih
-- **Fitur "Jelaskan Lebih Jelas"**: Dapatkan penjelasan lebih detail dari respons sebelumnya
+- **RAG (Retrieval-Augmented Generation)**: Menggunakan dokumen akademik untuk jawaban yang akurat
+- **Multi-Platform**: WhatsApp (Twilio), Web Chat, dan API
+- **Knowledge Base Management**: Upload dan kelola dokumen PDF, TXT, CSV
+- **Fitur "Jelaskan Lebih Jelas"**: Dapatkan penjelasan lebih detail dari jawaban sebelumnya
 - **Fitur "Pertanyaan Umum" (FAQ)**: 30+ FAQ dengan jawaban instan
 - **Fitur FAQ WhatsApp**: Menu FAQ interaktif untuk platform text-based
+- **LangSmith Integration**: Comprehensive LLM observability dan tracing
 
-### 🧠 **Model AI Canggih**
-- **Google Gemini 2.0 Flash**: LLM terbaru untuk generasi respons
-- **Embedding Nomic Atlas**: Embedding semantik berkualitas tinggi
-- **Optimasi bahasa Indonesia**: Prompt khusus untuk konteks akademik
-- **Memori percakapan**: Respons lanjutan yang sadar konteks
+## 🚀 LangSmith Integration
 
-### 🎨 **UI Siap Produksi**
-- **Tailwind CSS**: Desain modern dan responsif
-- **Build CSS lokal**: Tanpa ketergantungan CDN
-- **Aset produksi terkompresi**: Dioptimalkan untuk performa
-- **Kompatibilitas lintas platform**: Berfungsi di desktop dan mobile
+Proyek ini telah terintegrasi dengan **LangSmith** untuk comprehensive tracing, monitoring, dan performance tracking dari LLM operations.
 
-## 📁 Struktur Proyek
+### 🔧 Setup LangSmith
 
-```
-Chatbot AI All Using API Ver 1.4.5/
-│
-├── app/                          # Aplikasi backend inti
-│   ├── __init__.py              # Inisialisasi paket dan ekstensi Flask
-│   ├── core.py                  # Logika RAG utama, penanganan chat, embedding
-│   ├── models.py                # Model database, loader LLM dan embedding
-│   └── vector_store.py          # Operasi vector store dan retrieval hibrida
-│
-├── main_whatsapp.py             # Aplikasi Flask utama dengan semua endpoint
-├── requirements.txt             # Dependensi Python
-├── env.example                  # Template variabel lingkungan
-├── README.md                    # Dokumentasi proyek
-│
-├── documents/                   # Dokumen basis pengetahuan (PDF, TXT, CSV)
-├── vector_db/                   # Vector store FAISS (dibuat otomatis)
-├── instance/
-│   └── app.db                   # Database SQLite (dibuat otomatis)
-│
-├── templates/                   # Template HTML
-│   ├── chat.html               # Antarmuka web chat
-│   ├── admin_dashboard.html    # Dashboard admin dengan pengelolaan file
-│   └── admin_login.html        # Autentikasi admin
-│
-├── static/
-│   └── css/
-│       └── output.css          # Tailwind CSS produksi (dibuat otomatis)
-│
-├── src/
-│   └── input.css               # Entry point Tailwind CSS
-│
-├── tailwind.config.js          # Konfigurasi Tailwind
-├── package.json                # Dependensi Node.js untuk Tailwind
-├── package-lock.json           # Lockfile Node.js
-├── build_css.py                # Script Python untuk build CSS
-│
-├── functions/                   # Fungsi/script kustom (dicadangkan)
-├── myenv/                       # Lingkungan virtual Python
-│
-└── ...                         # Folder konfigurasi dan cache
-```
+1. **Install Dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-## 🛠️ Instalasi
+2. **Environment Variables**:
+   Buat file `.env` berdasarkan `env.example` dan tambahkan:
+   ```env
+   # LangSmith Configuration for LLM Observability
+   LANGCHAIN_TRACING_V2="true"
+   LANGCHAIN_ENDPOINT="https://api.smith.langchain.com"
+   LANGCHAIN_API_KEY="YOUR_LANGSMITH_API_KEY"
+   LANGCHAIN_PROJECT="UIN Jakarta TI Chatbot"
+   ```
+
+3. **Get LangSmith API Key**:
+   - Daftar di [LangSmith](https://smith.langchain.com/)
+   - Buat API key di dashboard
+   - Masukkan ke `LANGCHAIN_API_KEY`
+
+### 📊 What's Being Traced
+
+- **All LLM Calls**: Setiap panggilan ke Google Gemini 2.0 Flash
+- **RAG Chain Operations**: Document retrieval, embedding, dan response generation
+- **User Interactions**: Metadata lengkap untuk setiap request
+- **Performance Metrics**: Latency, token usage, dan error tracking
+- **Platform-Specific Data**: WhatsApp, Web, dan API interactions
+
+### 🔍 Tracing Features
+
+- **Automatic Tracing**: LangChain otomatis trace semua LLM dan chain operations
+- **Manual Metadata**: User ID, platform, conversation state, dan custom metadata
+- **Error Tracking**: Comprehensive error logging dan debugging
+- **Performance Monitoring**: Real-time latency dan throughput metrics
+
+### 📈 Dashboard Access
+
+Setelah setup, akses dashboard LangSmith untuk melihat:
+- **Project Overview**: Summary metrics dan recent runs
+- **Detailed Traces**: Step-by-step execution flow
+- **Performance Analytics**: Latency trends dan optimization opportunities
+- **Error Analysis**: Failed requests dan debugging information
+
+## 🛠️ Installation & Setup
 
 ### Prasyarat
 - **Python 3.8+**

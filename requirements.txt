@@ -15,3 +15,4 @@ Flask-SQLAlchemy
 click
 nomic 
 black 
+langsmith>=0.1 

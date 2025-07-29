@@ -25,6 +25,7 @@ import pandas as pd
 import requests
 import json
 import shutil
+from langsmith import RunTree
 
 
 # Load environment variables
@@ -89,13 +90,30 @@ def process_whatsapp_message():
 
         print(f"Received message from {user_id}: {incoming_message}")
 
-        # Get AI response with user tracking
+        # Create LangSmith run tree for tracing
+        run_tree = RunTree(
+            run_type="chain",
+            name="WhatsApp Message Processing",
+            inputs={"user_message": incoming_message},
+            metadata={
+                "platform": "whatsapp",
+                "user_id": user_id,
+                "message_type": "user_input",
+                "source": "twilio_webhook"
+            }
+        )
+
+        # Get AI response with user tracking and tracing
         ai_response = get_response(
             incoming_message,
             user_id,
             conversation_has_started=False,
             is_initial_greeting_sent=False,
         )
+
+        # End the run tree with the response
+        run_tree.end(outputs={"ai_response": ai_response})
+        run_tree.post()
 
         # Create Twilio response
         response = MessagingResponse()
@@ -206,12 +224,31 @@ def web_chat():
         user_id = request.remote_addr  # Use IP as session/user id for demo
         if not user_message:
             return jsonify({"response": "Silakan masukkan pesan."})
+        
+        # Create LangSmith run tree for tracing
+        run_tree = RunTree(
+            run_type="chain",
+            name="Web Chat Message Processing",
+            inputs={"user_message": user_message},
+            metadata={
+                "platform": "web",
+                "user_id": user_id,
+                "message_type": "user_input",
+                "source": "web_chat"
+            }
+        )
+        
         ai_response = get_response(
             user_message,
             user_id,
             conversation_has_started=False,
             is_initial_greeting_sent=False,
         )
+        
+        # End the run tree with the response
+        run_tree.end(outputs={"ai_response": ai_response})
+        run_tree.post()
+        
         return jsonify({"response": ai_response})
 
 
@@ -429,10 +466,30 @@ def api_chat():
     if not message:
         return jsonify({"error": "No message provided"}), 400
 
+    # Create LangSmith run tree for tracing
+    run_tree = RunTree(
+        run_type="chain",
+        name="API Chat Message Processing",
+        inputs={"user_message": message},
+        metadata={
+            "platform": "api",
+            "user_id": user_id,
+            "message_type": "user_input",
+            "source": "api_chat",
+            "conversation_has_started": conversation_has_started,
+            "is_initial_greeting_sent": is_initial_greeting_sent
+        }
+    )
+
     # Pass conversation state to get_response
     response = get_response(
         message, user_id, conversation_has_started, is_initial_greeting_sent
     )
+    
+    # End the run tree with the response
+    run_tree.end(outputs={"ai_response": response})
+    run_tree.post()
+    
     return jsonify({"response": response})
 
 
@@ -720,9 +777,26 @@ def whatsapp_webhook():
         if user_message and chat_id:
             print(f"💬 Pesan dari {chat_id}: {user_message}")
 
+            # Create LangSmith run tree for tracing
+            run_tree = RunTree(
+                run_type="chain",
+                name="WAHA WhatsApp Message Processing",
+                inputs={"user_message": user_message},
+                metadata={
+                    "platform": "whatsapp",
+                    "user_id": chat_id,
+                    "message_type": "user_input",
+                    "source": "waha_webhook"
+                }
+            )
+
             # Call your RAG & LLM logic
             response_text = get_response(user_message)
             print(f"🤖 Jawaban dari LLM: {response_text}")
+
+            # End the run tree with the response
+            run_tree.end(outputs={"ai_response": response_text})
+            run_tree.post()
 
             # Send the reply
             send_whatsapp_reply(chat_id, response_text)
