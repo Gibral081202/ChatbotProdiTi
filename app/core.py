@@ -1,13 +1,14 @@
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Any
 from langchain.prompts import ChatPromptTemplate
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains.retrieval import create_retrieval_chain
 from .models import load_llm, load_embedding_model
 from .vector_store import load_vector_store, hybrid_retrieve
-import os
 import traceback
 import re
 import threading
+import json
+import os
 from app.models import KnowledgeBaseFile, db
 from app.vector_store import create_vector_store
 from langchain_community.document_loaders import PyMuPDFLoader
@@ -19,8 +20,11 @@ import hashlib
 # Store user sessions to track new users
 user_sessions: Dict[str, bool] = {}
 
-# Track last context for each user for clarification
-last_context: Dict[str, Tuple[List[Document], str]] = {}
+# Store last bot response for each user for "Explain More" feature
+last_bot_responses: Dict[str, str] = {}
+
+# Store user context for FAQ state management
+user_faq_context: Dict[str, str] = {}
 
 embedding_progress: Dict[str, Any] = {
     "status": "idle",
@@ -116,14 +120,155 @@ def mark_user_as_known(user_id: str) -> None:
     user_sessions[user_id] = True
 
 
-def format_bot_response(answer: str, is_successful_answer: bool = False) -> str:
+def store_last_bot_response(user_id: str, response: str) -> None:
+    """
+    Store the last bot response for a user.
+    
+    Args:
+        user_id (str): User identifier
+        response (str): Bot response to store
+    """
+    if user_id:
+        last_bot_responses[user_id] = response
+
+
+def get_last_bot_response(user_id: str) -> Optional[str]:
+    """
+    Get the last bot response for a user.
+    
+    Args:
+        user_id (str): User identifier
+        
+    Returns:
+        Optional[str]: Last bot response or None if not found
+    """
+    return last_bot_responses.get(user_id)
+
+
+def clear_last_bot_response(user_id: str) -> None:
+    """Clear the last bot response for a user."""
+    if user_id in last_bot_responses:
+        del last_bot_responses[user_id]
+
+
+def load_faq_data() -> List[Dict[str, str]]:
+    """
+    Load FAQ data from the JSON file.
+    
+    Returns:
+        List[Dict[str, str]]: List of FAQ items with question and answer
+    """
+    try:
+        # Get the path to the static directory
+        static_dir = os.path.join(os.path.dirname(__file__), '..', 'static')
+        faq_file_path = os.path.join(static_dir, 'faq_data.json')
+        
+        with open(faq_file_path, 'r', encoding='utf-8') as f:
+            faq_data = json.load(f)
+        return faq_data
+    except Exception as e:
+        print(f"Error loading FAQ data: {e}")
+        return []
+
+
+def get_faq_list() -> str:
+    """
+    Generate a formatted list of all FAQ questions.
+    
+    Returns:
+        str: Formatted FAQ list
+    """
+    faq_data = load_faq_data()
+    if not faq_data:
+        return "Maaf, daftar pertanyaan umum tidak tersedia saat ini."
+    
+    print(f"DEBUG: Loaded {len(faq_data)} FAQ items")
+    print(f"DEBUG: First FAQ item: {faq_data[0] if faq_data else 'None'}")
+    
+    faq_list = "Berikut adalah daftar pertanyaan yang sering diajukan:\n\n"
+    
+    for i, faq_item in enumerate(faq_data, 1):
+        line = f"{i}. {faq_item['question']}\n"
+        faq_list += line
+        print(f"DEBUG: Added line {i}: {line.strip()}")
+    
+    faq_list += "\nSilakan balas dengan NOMOR pertanyaan yang Anda inginkan "
+    faq_list += "(contoh: 2)."
+    
+    print(f"DEBUG: Final FAQ list length: {len(faq_list)}")
+    debug_chars = repr(faq_list[:300])
+    print(f"DEBUG: First 300 chars: {debug_chars}")
+    
+    return faq_list
+
+
+def get_faq_answer(question_number: int) -> Optional[str]:
+    """
+    Get the answer for a specific FAQ question by number.
+    
+    Args:
+        question_number (int): The question number (1-based)
+        
+    Returns:
+        Optional[str]: The answer or None if invalid number
+    """
+    faq_data = load_faq_data()
+    
+    if not faq_data or question_number < 1 or question_number > len(faq_data):
+        return None
+    
+    return faq_data[question_number - 1]['answer']
+
+
+def set_user_faq_context(user_id: str, context: str) -> None:
+    """
+    Set the FAQ context for a user.
+    
+    Args:
+        user_id (str): User identifier
+        context (str): Context value ('awaiting_faq_selection' or None)
+    """
+    if context:
+        user_faq_context[user_id] = context
+    elif user_id in user_faq_context:
+        del user_faq_context[user_id]
+
+
+def get_user_faq_context(user_id: str) -> Optional[str]:
+    """
+    Get the FAQ context for a user.
+    
+    Args:
+        user_id (str): User identifier
+        
+    Returns:
+        Optional[str]: Current FAQ context or None
+    """
+    return user_faq_context.get(user_id)
+
+
+def format_bot_response(
+    answer: str, 
+    is_successful_answer: bool = False, 
+    is_faq_response: bool = False
+) -> str:
     """
     Minimal post-processing: strip whitespace, remove XML tags, and ensure a friendly closing if missing.
     
     Args:
         answer (str): The response text to format
         is_successful_answer (bool): Whether this is a successful answer from knowledge base
+        is_faq_response (bool): Whether this is an FAQ-related response (to avoid adding FAQ trigger)
     """
+    # For FAQ responses, preserve the exact formatting
+    if is_faq_response:
+        # Only normalize line breaks but preserve structure
+        answer = answer.replace("\r\n", "\n").replace("\r", "\n")
+        # Remove any leftover <context>...</context> tags
+        answer = re.sub(r"<context>[\s\S]*?</context>", "", answer, flags=re.IGNORECASE)
+        return answer
+    
+    # For regular responses, apply full formatting
     # Remove leading/trailing whitespace and normalize line breaks
     answer = answer.strip().replace("\r\n", "\n").replace("\r", "\n")
     # Remove any leftover <context>...</context> tags
@@ -132,11 +277,90 @@ def format_bot_response(answer: str, is_successful_answer: bool = False) -> str:
     if not re.search(r"\?\s*$", answer):
         answer += "\n\nApakah ada pertanyaan lain yang bisa saya bantu? 😊"
     
-    # Append the instructional message for "Explain Further" feature ONLY for successful answers
-    if is_successful_answer:
-        answer += "\n\nJika Anda ingin penjelasan yang lebih detail, silakan balas dengan: **Jelaskan Lebih Jelas**"
+    # Add FAQ trigger footer (except for FAQ-related responses to prevent loops)
+    if not is_faq_response:
+        faq_trigger = "\n\n----\nKetik \"Menu FAQ\" untuk daftar pertanyaan umum."
+        answer += faq_trigger
     
     return answer
+
+
+def handle_explain_more_request(user_id: Optional[str]) -> str:
+    """
+    Handle requests for more detailed explanations of the last bot response.
+    
+    Args:
+        user_id (Optional[str]): User identifier
+        
+    Returns:
+        str: Detailed explanation or error message
+    """
+    if not user_id:
+        return format_bot_response(
+            "Tentu, jelaskan apa yang ingin Anda tanyakan lebih lanjut?",
+            is_successful_answer=False,
+            is_faq_response=False
+        )
+    
+    last_response = get_last_bot_response(user_id)
+    if not last_response:
+        return format_bot_response(
+            "Tentu, jelaskan apa yang ingin Anda tanyakan lebih lanjut?",
+            is_successful_answer=False,
+            is_faq_response=False
+        )
+    
+    # Create specialized prompt for elaboration
+    elaboration_prompt = f"""You are a helpful assistant. Your previous, concise response to the user was:
+
+---
+{last_response}
+---
+
+The user has now asked for a more detailed explanation ("Jelaskan lebih jelas"). Your task is to elaborate significantly on your previous answer. Break down complex concepts, provide examples, use analogies, and explain the 'why' behind the information. Do not simply rephrase the original answer. Make it deeper and more comprehensive.
+
+Please provide a much more detailed explanation in Indonesian, maintaining the same helpful and professional tone."""
+    
+    try:
+        # Use the same RAG chain but with the elaboration prompt
+        rag_chain, vector_store, embeddings, document_chain = create_rag_chain()
+        
+        # Get the same context documents that were used for the original response
+        # We'll use a general query to get relevant context
+        hybrid_docs = hybrid_retrieve("", vector_store, embeddings, top_k=6)
+        context_docs = [
+            doc for doc in hybrid_docs
+            if hasattr(doc, "page_content") and isinstance(doc.page_content, str)
+        ]
+        
+        # Generate detailed response
+        detailed_answer = document_chain.invoke({
+            "input": elaboration_prompt, 
+            "documents": context_docs[:5]
+        })
+        
+        if not detailed_answer or detailed_answer.strip() == "":
+            return format_bot_response(
+                "Maaf, saya tidak dapat memberikan penjelasan lebih detail saat ini. "
+                "Silakan ajukan pertanyaan baru.",
+                is_successful_answer=False,
+                is_faq_response=False
+            )
+        
+        return format_bot_response(
+            detailed_answer, 
+            is_successful_answer=True, 
+            is_faq_response=False
+        )
+        
+    except Exception as e:
+        print(f"Error in handle_explain_more_request: {e}")
+        return format_bot_response(
+            "Maaf, terjadi kesalahan saat memberikan penjelasan lebih detail. "
+            "Silakan coba lagi.",
+            is_successful_answer=False,
+            is_faq_response=False
+        )
 
 
 def get_response(query: str, user_id: Optional[str] = None, conversation_has_started: bool = False, is_initial_greeting_sent: bool = False) -> str:
@@ -154,7 +378,8 @@ def get_response(query: str, user_id: Optional[str] = None, conversation_has_sta
                 "mata kuliah, dosen, dan administrasi akademik. \n\n"
                 "Silakan ajukan pertanyaan spesifik tentang informasi yang "
                 "Anda butuhkan! 😊",
-                is_successful_answer=False
+                is_successful_answer=False,
+                is_faq_response=False
             )
 
         # New user welcome
@@ -170,81 +395,59 @@ def get_response(query: str, user_id: Optional[str] = None, conversation_has_sta
         #        is_successful_answer=False
         #    )
 
-        # Jelaskan Lebih Jelas command
-        if query_lower.strip() == "jelaskan lebih jelas":
-            if not user_id:
-                return format_bot_response(
-                    "Maaf, tidak ada topik sebelumnya yang dapat dijelaskan lebih lanjut. Silakan ajukan pertanyaan baru terlebih dahulu.",
-                    is_successful_answer=False
-                )
-            if user_id in last_context:
-                context_docs, last_question = last_context[user_id]
-                valid_context = (
-                    isinstance(context_docs, list)
-                    and context_docs
-                    and hasattr(context_docs[0], "page_content")
-                )
-                if not valid_context:
-                    return format_bot_response(
-                        "Maaf, tidak ada topik sebelumnya yang dapat dijelaskan lebih lanjut. Silakan ajukan pertanyaan baru.",
-                        is_successful_answer=False
-                    )
-                detail_query = (
-                    f"Terkait pertanyaan saya sebelumnya, '{last_question}', "
-                    "mohon berikan penjelasan yang jauh lebih rinci dan komprehensif. "
-                    "Jabarkan semua poin penting, sertakan langkah-langkah atau contoh lebih spesifik jika tersedia dari konteks, dan pastikan jawabannya selengkap mungkin."
-                )
-                rag_chain, vector_store, embeddings, document_chain = create_rag_chain()
-                answer = document_chain.invoke({"input": detail_query, "documents": context_docs[:5]})
-                if not answer or answer.strip() == "":
-                    return format_bot_response(
-                        "Tolong perjelas terkait pertanyaan yang Anda berikan.",
-                        is_successful_answer=False
-                    )
-                return format_bot_response(answer, is_successful_answer=True)
-            else:
-                return format_bot_response(
-                    "Maaf, tidak ada topik sebelumnya yang dapat dijelaskan lebih lanjut. Silakan ajukan pertanyaan baru terlebih dahulu.",
-                    is_successful_answer=False
-                )
-
-        # Follow-up triggers
-        followup_triggers = [
-            "jelaskan lebih lanjut", "jelaskan lebih detail", "jelaskan lebih rinci", "jelaskan lebih lengkap",
-            "saya ingin penjelasan lebih lanjut", "explain more", "can you elaborate", "give me more details",
-            "be more specific", "tell me more about that", "in more detail, please", "elaborate on that",
+        # Check for "Explain More" triggers
+        explain_more_triggers = [
+            "jelaskan lebih jelas",
+            "explain more",
+            "tell me more",
+            "go into more detail",
+            "jelaskan lebih detail",
+            "jelaskan lebih lanjut",
+            "jelaskan lebih rinci",
+            "jelaskan lebih lengkap",
+            "saya ingin penjelasan lebih lanjut",
+            "can you elaborate",
+            "give me more details",
+            "be more specific",
+            "tell me more about that",
+            "in more detail, please",
+            "elaborate on that"
         ]
-        if user_id and any(query_lower.startswith(trigger) for trigger in followup_triggers):
-            if user_id in last_context:
-                context_docs, last_question = last_context[user_id]
-                valid_context = (
-                    isinstance(context_docs, list)
-                    and context_docs
-                    and hasattr(context_docs[0], "page_content")
-                )
-                if not valid_context:
-                    return format_bot_response(
-                        "Maaf, tidak ada topik sebelumnya yang dapat dijelaskan lebih lanjut. Silakan ajukan pertanyaan baru.",
-                        is_successful_answer=False
-                    )
-                detail_query = (
-                    f"Terkait pertanyaan saya sebelumnya, '{last_question}', "
-                    "mohon berikan penjelasan yang jauh lebih rinci dan komprehensif. "
-                    "Jabarkan semua poin penting, sertakan langkah-langkah atau contoh lebih spesifik jika tersedia dari konteks, dan pastikan jawabannya selengkap mungkin."
-                )
-                rag_chain, vector_store, embeddings, document_chain = create_rag_chain()
-                answer = document_chain.invoke({"input": detail_query, "documents": context_docs[:5]})
-                if not answer or answer.strip() == "":
-                    return format_bot_response(
-                        "Tolong perjelas terkait pertanyaan yang Anda berikan.",
-                        is_successful_answer=False
-                    )
-                return format_bot_response(answer, is_successful_answer=True)
-            else:
-                return format_bot_response(
-                    "Maaf, tidak ada topik sebelumnya yang dapat dijelaskan lebih lanjut. Silakan ajukan pertanyaan baru.",
-                    is_successful_answer=False
-                )
+        
+        if any(query_lower.startswith(trigger) for trigger in explain_more_triggers):
+            return handle_explain_more_request(user_id)
+
+        # Check for FAQ commands and handle FAQ state
+        if user_id:
+            current_faq_context = get_user_faq_context(user_id)
+            
+            # Handle "Menu FAQ" command
+            if query_lower in ["menu faq", "faq", "pertanyaan umum", "daftar pertanyaan"]:
+                faq_list = get_faq_list()
+                set_user_faq_context(user_id, "awaiting_faq_selection")
+                return format_bot_response(faq_list, is_successful_answer=False, is_faq_response=True)
+            
+            # Handle FAQ number selection
+            if current_faq_context == "awaiting_faq_selection":
+                try:
+                    # Try to parse the input as a number
+                    question_number = int(query.strip())
+                    faq_answer = get_faq_answer(question_number)
+                    
+                    if faq_answer:
+                        # Reset FAQ context after providing answer
+                        set_user_faq_context(user_id, None)
+                        return format_bot_response(faq_answer, is_successful_answer=True, is_faq_response=True)
+                    else:
+                        return format_bot_response(
+                            f"Nomor {question_number} tidak valid. Silakan pilih nomor dari daftar di atas.",
+                            is_successful_answer=False,
+                            is_faq_response=True
+                        )
+                except ValueError:
+                    # If not a number, reset context and continue with normal processing
+                    set_user_faq_context(user_id, None)
+                    # Continue to normal processing below
 
         # Main knowledge base answer logic
         rag_chain, vector_store, embeddings, document_chain = create_rag_chain()
@@ -253,20 +456,26 @@ def get_response(query: str, user_id: Optional[str] = None, conversation_has_sta
             doc for doc in hybrid_docs
             if hasattr(doc, "page_content") and isinstance(doc.page_content, str)
         ]
-        if user_id:
-            last_context[user_id] = (context_docs, query)
+
         if not context_docs:
             return format_bot_response(
                 "Tolong perjelas terkait pertanyaan yang Anda berikan.",
-                is_successful_answer=False
+                is_successful_answer=False,
+                is_faq_response=False
             )
         answer = document_chain.invoke({"input": query, "documents": context_docs[:5]})
         if not answer or answer.strip() == "":
             return format_bot_response(
                 "Tolong perjelas terkait pertanyaan yang Anda berikan.",
-                is_successful_answer=False
+                is_successful_answer=False,
+                is_faq_response=False
             )
-        return format_bot_response(answer, is_successful_answer=True)
+        
+        # Store the bot response for "Explain More" feature
+        formatted_answer = format_bot_response(answer, is_successful_answer=True, is_faq_response=False)
+        store_last_bot_response(user_id, formatted_answer)
+        
+        return formatted_answer
     except Exception as e:
         print("=== FULL TRACEBACK ===")
         traceback.print_exc()
@@ -275,58 +484,10 @@ def get_response(query: str, user_id: Optional[str] = None, conversation_has_sta
             f"Maaf, saya mengalami kesalahan dalam memproses "
             f"pertanyaan Anda: {str(e)}"
         )
-        return format_bot_response(error_msg, is_successful_answer=False)
+        return format_bot_response(error_msg, is_successful_answer=False, is_faq_response=False)
 
 
-def get_system_info() -> str:
-    """
-    Get information about the system and available documents.
-    
-    Returns:
-        str: System information in Indonesian
-    """
-    try:
-        embeddings = load_embedding_model()
-        vector_store = load_vector_store(embeddings)
-        
-        if not vector_store:
-            return (
-                "Sistem Customer Service belum siap. Silakan jalankan "
-                "ingest.py terlebih dahulu untuk memproses dokumen."
-            )
-        
-        # Get document count and types
-        docs_dir = "documents"
-        if os.path.exists(docs_dir):
-            files = [
-                f for f in os.listdir(docs_dir) if f.endswith((".pdf", ".txt", ".csv"))
-            ]
-            file_types: Dict[str, int] = {}
-            for file in files:
-                ext = file.split(".")[-1].upper()
-                file_types[ext] = file_types.get(ext, 0) + 1
-            
-            info = (
-                "🎓 Customer Service Program Studi Teknik Informatika "
-                "UIN Jakarta\n\n"
-            )
-            info += f"Sistem siap dengan {len(files)} dokumen akademik:\n"
-            for ext, count in file_types.items():
-                info += f"• {count} file {ext}\n"
-            
-            info += "\n📚 Dokumen yang tersedia:\n"
-            info += "• Kurikulum Teknik Informatika 2020\n"
-            info += "• Pedoman Akademik UIN Jakarta\n"
-            info += "• Daftar Dosen Teknik Informatika\n"
-            info += "• SOP Pelaksanaan PKL\n"
-            info += "• Informasi Mata Kuliah per Semester\n"
-            
-            return info
-        else:
-            return "Tidak ada dokumen akademik yang ditemukan."
-            
-    except Exception as e:
-        return f"Error getting system info: {str(e)}"
+
 
 
 def load_kb_files() -> List[Document]:

@@ -2,7 +2,6 @@ from flask import Flask, request, render_template, jsonify, redirect, flash
 from twilio.twiml.messaging_response import MessagingResponse
 from app.core import (
     get_response,
-    get_system_info,
     get_embedding_progress,
     get_file_status,
     split_documents_by_type,
@@ -90,39 +89,13 @@ def process_whatsapp_message():
 
         print(f"Received message from {user_id}: {incoming_message}")
 
-        # Handle special commands
-        if incoming_message.lower() in ["/info", "/status", "info", "status"]:
-            ai_response = get_system_info()
-        elif incoming_message.lower() in ["/help", "help", "bantuan", "tolong"]:
-            ai_response = """**Bantuan Customer Service Teknik Informatika** 🎓
-
-**Perintah Khusus:**
-• `/info` atau `info` - Informasi sistem dan dokumen akademik
-• `/help` atau `help` - Menampilkan bantuan ini
-
-**Layanan yang Tersedia:**
-1. Informasi kurikulum dan mata kuliah
-2. Panduan akademik dan administrasi
-3. Informasi dosen dan jadwal
-4. Bantuan pendaftaran dan registrasi
-5. Panduan PKL dan skripsi
-
-**Contoh Pertanyaan:**
-• "Bagaimana struktur kurikulum semester 1?"
-• "Siapa saja dosen pengajar mata kuliah [nama mata kuliah]?"
-• "Bagaimana prosedur pendaftaran PKL?"
-• "Apa saja persyaratan untuk skripsi?"
-• "Informasi tentang mata kuliah pilihan"
-
-Silakan ajukan pertanyaan Anda! 😊"""
-        else:
-            # Get AI response with user tracking
-            ai_response = get_response(
-                incoming_message,
-                user_id,
-                conversation_has_started=False,
-                is_initial_greeting_sent=False,
-            )
+        # Get AI response with user tracking
+        ai_response = get_response(
+            incoming_message,
+            user_id,
+            conversation_has_started=False,
+            is_initial_greeting_sent=False,
+        )
 
         # Create Twilio response
         response = MessagingResponse()
@@ -207,11 +180,9 @@ def test_endpoint():
     Test endpoint to verify the system is working.
     """
     try:
-        system_info = get_system_info()
         return {
             "status": "success",
             "message": "Sistem berfungsi dengan baik",
-            "system_info": system_info,
             "language": "Indonesian",
         }
     except Exception as e:
@@ -793,7 +764,7 @@ if __name__ == "__main__":
     print("1. Set up your environment variables in .env file")
     print("2. Run ingest.py to create the vector store")
     print("3. Configure your Twilio webhook URL to point to this server")
-    print("4. Test with /info or /help commands")
+
     print("5. Access web chat at: http://localhost:" + str(port) + "/chat")
 
     app.run(host="0.0.0.0", port=port, debug=True)

@@ -10,7 +10,7 @@ Proyek ini adalah sistem chatbot AI yang dirancang untuk Program Studi Teknik In
 - **Twilio WhatsApp**: Integrasi berbasis webhook tradisional
 - **WAHA (WhatsApp HTTP API)**: Integrasi WhatsApp langsung tanpa ketergantungan Twilio
 - **Perutean pesan cerdas**: Penanganan otomatis kedua platform
-- **Sistem perintah**: Perintah `/info`, `/help`, `/status`
+
 
 ### 💬 **Antarmuka Web Chat Modern**
 - **Pesan real-time** dengan AJAX
@@ -31,7 +31,9 @@ Proyek ini adalah sistem chatbot AI yang dirancang untuk Program Studi Teknik In
 - **Preview chunking dokumen**: Lihat bagaimana dokumen akan dibagi sebelum embedding
 - **Dukungan multi-format**: PDF, TXT, CSV dengan pemrosesan cerdas
 - **Reranking Jina AI opsional**: Skoring relevansi dokumen canggih
-- **Pelacakan konteks**: Fitur "Jelaskan Lebih Jelas" untuk pertanyaan lanjutan
+- **Fitur "Jelaskan Lebih Jelas"**: Dapatkan penjelasan lebih detail dari respons sebelumnya
+- **Fitur "Pertanyaan Umum" (FAQ)**: 30+ FAQ dengan jawaban instan
+- **Fitur FAQ WhatsApp**: Menu FAQ interaktif untuk platform text-based
 
 ### 🧠 **Model AI Canggih**
 - **Google Gemini 2.0 Flash**: LLM terbaru untuk generasi respons
@@ -173,7 +175,7 @@ Chatbot AI All Using API Ver 1.4.5/
 #### Twilio WhatsApp
 - **Endpoint:** `/whatsapp` atau `/webhook`
 - **Setup:** Konfigurasi URL webhook Twilio ke server Anda
-- **Perintah:** `/info`, `/help`, `/status`
+
 
 #### WAHA (WhatsApp HTTP API)
 - **Endpoint:** `/api/whatsapp/webhook`
@@ -206,9 +208,6 @@ Chatbot AI All Using API Ver 1.4.5/
 | `/test` | GET | Test sistem |
 
 ### Perintah Khusus
-- `/info` atau `info` - Informasi sistem dan status dokumen
-- `/help` atau `help` - Bantuan dan layanan yang tersedia
-- `/status` atau `status` - Status sistem
 - `Jelaskan Lebih Jelas` - Dapatkan penjelasan lebih detail dari respons sebelumnya
 
 ## 🔧 Fitur Canggih
@@ -218,6 +217,30 @@ Chatbot AI All Using API Ver 1.4.5/
 - **Retrieval Hibrida:** Menggabungkan pencarian semantik dengan pencocokan kata kunci
 - **Reranking:** Reranking Jina AI opsional untuk relevansi yang lebih baik
 - **Memori Konteks:** Melacak konteks percakapan untuk pertanyaan lanjutan
+
+### Fitur "Jelaskan Lebih Jelas"
+- **Trigger Detection:** Mendeteksi frasa seperti "Jelaskan lebih jelas", "Explain more", "Tell me more"
+- **State Management:** Menyimpan respons bot terakhir untuk setiap pengguna
+- **Elaboration AI:** Menggunakan prompt khusus untuk memberikan penjelasan yang lebih detail
+- **UI Integration:** Tombol "Jelaskan Lebih Jelas" di setiap respons bot
+- **Multi-language Support:** Mendukung trigger dalam Bahasa Indonesia dan Inggris
+
+### Fitur "Pertanyaan Umum" (FAQ)
+
+- **Client-side FAQ**: Pertanyaan dan jawaban disimpan dalam `faq_data.json`
+- **Interactive UI**: Tombol klik untuk pertanyaan umum
+- **Instant Responses**: Jawaban langsung tanpa API call
+- **Toggle Control**: Tombol untuk menampilkan/menyembunyikan FAQ
+- **Responsive Design**: Tampilan optimal untuk desktop dan mobile
+
+### Fitur FAQ WhatsApp
+
+- **Trigger Footer**: Setiap respons bot menampilkan "Ketik 'Menu FAQ' untuk daftar pertanyaan umum"
+- **Menu FAQ Command**: Pengguna dapat mengetik "Menu FAQ" untuk melihat daftar pertanyaan
+- **Numbered Selection**: Pengguna memilih pertanyaan dengan nomor (1, 2, 3, dst.)
+- **State Management**: Sistem mengingat konteks FAQ untuk setiap pengguna
+- **Error Handling**: Validasi input dan pesan error yang informatif
+- **Auto-reset**: Konteks FAQ otomatis reset setelah pemilihan atau input tidak valid
 
 ### Fitur Dashboard Admin
 - **Upload File:** Drag-and-drop dengan preview chunking

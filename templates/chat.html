@@ -5,6 +5,7 @@
     <title>AI Chatbot - Teknik Informatika</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/static/css/output.css">
+    <link rel="stylesheet" href="/static/css/suggested-questions.css">
     <style>
         body { font-family: 'Segoe UI', 'Roboto', Arial, sans-serif; }
     </style>
@@ -13,21 +14,70 @@
     <div class="bg-white shadow text-center py-4 text-xl font-bold text-gray-800">AI Chatbot - Teknik Informatika</div>
     <div class="max-w-xl mx-auto flex flex-col min-h-[80vh] pb-28 px-2">
         <div class="flex-1 flex flex-col gap-4 py-6 overflow-y-auto" id="chat-messages"></div>
+        <!-- FAQ Suggestions Container -->
+        <div id="suggested-questions-container"></div>
     </div>
     <form class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 py-3 z-10" id="chat-form" autocomplete="off">
         <div class="max-w-xl mx-auto flex gap-2 px-2">
             <input type="text" class="flex-1 border border-gray-300 rounded-full px-4 py-2 focus:ring-2 focus:ring-blue-400 text-base" id="chat-input" placeholder="Ketik pesan..." required autofocus>
             <button class="w-12 h-12 flex items-center justify-center rounded-full bg-blue-600 text-white text-xl hover:bg-blue-700 transition" type="submit" title="Kirim"><span>&#10148;</span></button>
         </div>
+        <!-- FAQ Toggle Button -->
+        <div class="max-w-xl mx-auto mt-2 px-2">
+            <button type="button" id="faq-toggle-btn" class="w-full py-2 px-4 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition text-sm font-medium">
+                💡 Tampilkan Pertanyaan Umum
+            </button>
+        </div>
     </form>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="/static/js/suggested-questions.js"></script>
     <script>
         const chatMessages = document.getElementById('chat-messages');
         const chatForm = document.getElementById('chat-form');
         const chatInput = document.getElementById('chat-input');
+        const faqToggleBtn = document.getElementById('faq-toggle-btn');
         let chatHistory = [];
         let isInitialGreetingSent = false;
         let conversationHasStarted = false;
+        
+        // Auto-scroll function
+        function scrollToBottom(smooth = true) {
+            // Scroll the chat messages container to bottom
+            if (chatMessages) {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+            
+            // Also scroll the main container to ensure FAQ suggestions are visible
+            const mainContainer = document.querySelector('.max-w-xl.mx-auto.flex.flex-col');
+            if (mainContainer) {
+                mainContainer.scrollIntoView({ 
+                    behavior: smooth ? 'smooth' : 'auto',
+                    block: 'end'
+                });
+            }
+        }
+        
+        // FAQ Suggestions Handler
+        function handleQuestionSelect(faqItem) {
+            // Add the user's question to chat history
+            chatHistory.push({ sender: 'user', text: faqItem.question, ts: new Date() });
+            appendMessage(faqItem.question, 'user', new Date());
+            
+            // Immediately add the predefined answer to chat history
+            chatHistory.push({ sender: 'bot', text: faqItem.answer, ts: new Date() });
+            appendMessage(faqItem.answer, 'bot', new Date());
+            
+            // Hide suggestions after selection and update toggle button
+            if (suggestedQuestions) {
+                suggestedQuestions.hide();
+                // Update toggle button state
+                faqToggleBtn.textContent = '💡 Tampilkan Pertanyaan Umum';
+                faqToggleBtn.className = 'w-full py-2 px-4 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition text-sm font-medium';
+            }
+            
+            // Mark conversation as started
+            conversationHasStarted = true;
+        }
         const welcomeMessage = `Selamat datang di Customer Service Program Studi Teknik Informatika! 🎓\n\nSaya adalah asisten AI yang siap membantu Anda dengan informasi seputar Program Studi Teknik Informatika UIN Syarif Hidayatullah Jakarta.\n\n**Layanan yang tersedia:**\n• Informasi kurikulum dan mata kuliah\n• Panduan akademik dan administrasi\n• Informasi dosen dan jadwal\n• Bantuan pendaftaran dan registrasi\n• Panduan PKL dan skripsi\n• Informasi fasilitas dan sarana\n\n**Catatan:** Saya akan memberikan jawaban berdasarkan dokumen resmi Program Studi Teknik Informatika UIN Jakarta. Untuk informasi yang lebih spesifik, silakan hubungi bagian akademik.\n\nSilakan ajukan pertanyaan Anda! 😊`;
         function formatTime(date) {
             return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -39,6 +89,18 @@
             content.className = 'max-w-[90%] px-4 py-3 rounded-2xl text-base mb-1 ' + (sender === 'user' ? 'bg-blue-100 text-blue-900' : 'bg-white text-gray-900 border border-gray-200');
             if (sender === 'bot') {
                 content.innerHTML = marked.parse(text);
+                
+                // Add "Explain More" button for bot messages (except for error messages and greetings)
+                if (!text.includes('Terjadi kesalahan') && !text.includes('Selamat datang') && !text.includes('Tentu, jelaskan apa yang ingin Anda tanyakan')) {
+                    const explainButton = document.createElement('button');
+                    explainButton.className = 'mt-2 px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors';
+                    explainButton.textContent = 'Jelaskan Lebih Jelas';
+                    explainButton.onclick = function() {
+                        chatInput.value = 'Jelaskan lebih jelas';
+                        chatForm.dispatchEvent(new Event('submit'));
+                    };
+                    content.appendChild(explainButton);
+                }
             } else {
                 content.textContent = text;
             }
@@ -49,6 +111,11 @@
             row.appendChild(meta);
             chatMessages.appendChild(row);
             chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            // Additional scroll to ensure visibility
+            setTimeout(() => {
+                scrollToBottom(true);
+            }, 50);
         }
         function renderChat() {
             chatMessages.innerHTML = '';
@@ -65,11 +132,20 @@
         }
         document.addEventListener('DOMContentLoaded', function() {
             displayWelcomeMessage();
+            
+            // Initialize FAQ Suggestions
+            suggestedQuestions = new SuggestedQuestions('suggested-questions-container', handleQuestionSelect);
         });
         chatForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             const userMsg = chatInput.value.trim();
             if (!userMsg) return;
+            
+            // Hide suggestions when user submits a message
+            if (suggestedQuestions) {
+                suggestedQuestions.hide();
+            }
+            
             conversationHasStarted = true;
             chatHistory.push({ sender: 'user', text: userMsg, ts: new Date() });
             appendMessage(userMsg, 'user', new Date());
@@ -101,6 +177,42 @@
                 document.getElementById('loading-bot-msg').remove();
                 chatHistory.push({ sender: 'bot', text: 'Terjadi kesalahan. Silakan coba lagi.', ts: new Date() });
                 appendMessage('Terjadi kesalahan. Silakan coba lagi.', 'bot', new Date());
+            }
+        });
+        
+        // Hide suggestions when user starts typing
+        chatInput.addEventListener('input', function() {
+            if (suggestedQuestions && suggestedQuestions.isShown()) {
+                suggestedQuestions.hide();
+            }
+        });
+        
+        // Show suggestions when input is cleared and no conversation has started
+        chatInput.addEventListener('blur', function() {
+            if (chatInput.value.trim() === '' && !conversationHasStarted && suggestedQuestions) {
+                setTimeout(() => {
+                    suggestedQuestions.show();
+                }, 300);
+            }
+        });
+        
+        // FAQ Toggle Button
+        faqToggleBtn.addEventListener('click', function() {
+            if (suggestedQuestions) {
+                if (suggestedQuestions.isShown()) {
+                    suggestedQuestions.hide();
+                    faqToggleBtn.textContent = '💡 Tampilkan Pertanyaan Umum';
+                    faqToggleBtn.className = 'w-full py-2 px-4 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition text-sm font-medium';
+                } else {
+                    suggestedQuestions.show();
+                    faqToggleBtn.textContent = '❌ Sembunyikan Pertanyaan Umum';
+                    faqToggleBtn.className = 'w-full py-2 px-4 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition text-sm font-medium';
+                    
+                    // Ensure proper scrolling to show the suggestions
+                    setTimeout(() => {
+                        scrollToBottom(true);
+                    }, 200);
+                }
             }
         });
     </script>
