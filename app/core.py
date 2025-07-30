@@ -386,10 +386,11 @@ def format_bot_response(
     if not re.search(r"\?\s*$", answer):
         answer += "\n\nApakah ada pertanyaan lain yang bisa saya bantu? 😊"
     
-    # Add FAQ trigger footer (except for FAQ-related responses to prevent loops)
+    # Add combined footer with both "Explain More" and "Menu FAQ" options
+    # (except for FAQ-related responses to prevent loops)
     if not is_faq_response:
-        faq_trigger = "\n\n----\nKetik \"Menu FAQ\" untuk daftar pertanyaan umum."
-        answer += faq_trigger
+        footer = "\n\n----\nKetik:\n• \"Jelaskan Lebih Jelas\" untuk rincian.\n• \"Menu FAQ\" untuk daftar pertanyaan umum."
+        answer += footer
     
     # Fix URL formatting for chat
     answer = format_links_for_chat(answer)
@@ -421,21 +422,17 @@ def handle_explain_more_request(user_id: Optional[str]) -> str:
     last_response = get_last_bot_response(user_id)
     if not last_response:
         return format_bot_response(
-            "Tentu, jelaskan apa yang ingin Anda tanyakan lebih lanjut?",
+            "Tentu, apa yang ingin Anda ketahui lebih detail?",
             is_successful_answer=False,
             is_faq_response=False
         )
     
-    # Create specialized prompt for elaboration
-    elaboration_prompt = f"""You are a helpful assistant. Your previous, concise response to the user was:
-
+    # Create specialized prompt for elaboration using the exact template
+    elaboration_prompt = f"""You are a helpful and detailed expert. Your previous, more concise response to the user was:
 ---
 {last_response}
 ---
-
-The user has now asked for a more detailed explanation ("Jelaskan lebih jelas"). Your task is to elaborate significantly on your previous answer. Break down complex concepts, provide examples, use analogies, and explain the 'why' behind the information. Do not simply rephrase the original answer. Make it deeper and more comprehensive.
-
-Please provide a much more detailed explanation in Indonesian, maintaining the same helpful and professional tone."""
+The user has now asked for a more detailed explanation ("Jelaskan Lebih Jelas"). Your task is to elaborate significantly on your previous answer. Break down complex concepts, provide definitions, use examples or analogies, and explain the 'why' behind the information. Do not simply rephrase the original answer. Make it deeper, richer, and more comprehensive."""
     
     try:
         # Use the same RAG chain but with the elaboration prompt
@@ -547,17 +544,18 @@ def get_response(query: str, user_id: Optional[str] = None, conversation_has_sta
                 set_user_faq_context(user_id, None)
                 # Continue to normal processing below
 
-    # Check for "Explain More" triggers
+    # Check for "Explain More" triggers (case-insensitive)
     explain_more_triggers = [
+        "jelaskan",
         "jelaskan lebih jelas",
-        "explain more",
-        "tell me more",
-        "go into more detail",
         "jelaskan lebih detail",
         "jelaskan lebih lanjut",
         "jelaskan lebih rinci",
         "jelaskan lebih lengkap",
         "saya ingin penjelasan lebih lanjut",
+        "explain more",
+        "tell me more",
+        "go into more detail",
         "can you elaborate",
         "give me more details",
         "be more specific",

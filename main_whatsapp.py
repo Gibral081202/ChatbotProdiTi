@@ -794,8 +794,8 @@ def whatsapp_webhook():
                 }
             )
 
-            # Call your RAG & LLM logic
-            response_text = get_response(user_message)
+            # Call your RAG & LLM logic with user_id for state management
+            response_text = get_response(user_message, user_id=chat_id)
             print(f"🤖 Jawaban dari LLM: {response_text}")
 
             # End the run tree with the response
