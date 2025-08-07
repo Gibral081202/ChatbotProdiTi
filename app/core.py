@@ -495,8 +495,10 @@ def handle_explain_more_request(user_id: Optional[str]) -> str:
         )
     
     # Get the last bot context (includes original query, response, and documents)
+    print(f"[EXPLAIN] Getting context for user_id: {user_id}")
     last_context = get_last_bot_context(user_id)
     if not last_context:
+        print(f"[EXPLAIN] No context found for user_id: {user_id}")
         return format_bot_response(
             "Maaf, saya tidak memiliki respons sebelumnya untuk dijelaskan lebih detail. "
             "Silakan ajukan pertanyaan baru yang ingin Anda ketahui.",
@@ -820,7 +822,7 @@ def get_response(query: str, user_id: Optional[str] = None, conversation_has_sta
         # This OVERWRITES any previous context to ensure we always have the most recent
         store_last_bot_context(user_id, query, formatted_answer, context_docs)
         
-        print(f"[RESPONSE] Stored context for latest query: '{query[:50]}...'")
+        print(f"[RESPONSE] Stored context for user_id: {user_id}, query: '{query[:50]}...'")
         return formatted_answer
     except Exception as e:
         print("=== FULL TRACEBACK ===")

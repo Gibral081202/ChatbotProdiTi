@@ -40,6 +40,61 @@
         let isInitialGreetingSent = false;
         let conversationHasStarted = false;
         
+        // Generate a consistent user ID for web chat (similar to WhatsApp)
+        const generateUserId = () => {
+            // Try to get existing user ID from localStorage
+            let userId = localStorage.getItem('webchat_user_id');
+            if (!userId) {
+                // Generate a new user ID if none exists
+                userId = 'web_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('webchat_user_id', userId);
+            }
+            return userId;
+        };
+        
+        const userId = generateUserId();
+        
+        // Function to send explain more request
+        async function sendExplainMoreRequest() {
+            const explainMsg = 'Jelaskan lebih jelas';
+            
+            // Add user message to chat
+            chatHistory.push({ sender: 'user', text: explainMsg, ts: new Date() });
+            appendMessage(explainMsg, 'user', new Date());
+            
+            // Show loading
+            const loadingRow = document.createElement('div');
+            loadingRow.className = 'flex flex-col items-start';
+            loadingRow.id = 'loading-bot-msg';
+            const loadingContent = document.createElement('div');
+            loadingContent.className = 'max-w-[90%] px-4 py-3 rounded-2xl text-base mb-1 bg-gray-100 text-gray-500 border border-gray-200';
+            loadingContent.innerHTML = '<span class="animate-spin inline-block w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full mr-2"></span> Mengetik...';
+            loadingRow.appendChild(loadingContent);
+            chatMessages.appendChild(loadingRow);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            try {
+                const res = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        message: explainMsg,
+                        user_id: userId,
+                        conversationHasStarted: conversationHasStarted,
+                        isInitialGreetingSent: isInitialGreetingSent
+                    })
+                });
+                const data = await res.json();
+                document.getElementById('loading-bot-msg').remove();
+                chatHistory.push({ sender: 'bot', text: data.response, ts: new Date() });
+                appendMessage(data.response, 'bot', new Date());
+            } catch (err) {
+                document.getElementById('loading-bot-msg').remove();
+                chatHistory.push({ sender: 'bot', text: 'Terjadi kesalahan. Silakan coba lagi.', ts: new Date() });
+                appendMessage('Terjadi kesalahan. Silakan coba lagi.', 'bot', new Date());
+            }
+        }
+        
         // Auto-scroll function
         function scrollToBottom(smooth = true) {
             // Scroll the chat messages container to bottom
@@ -90,14 +145,20 @@
             if (sender === 'bot') {
                 content.innerHTML = marked.parse(text);
                 
-                // Add "Explain More" button for bot messages (except for error messages and greetings)
-                if (!text.includes('Terjadi kesalahan') && !text.includes('Selamat datang') && !text.includes('Tentu, jelaskan apa yang ingin Anda tanyakan')) {
+                // Add "Explain More" button for bot messages (except for error messages, greetings, and FAQ responses)
+                if (!text.includes('Terjadi kesalahan') && 
+                    !text.includes('Selamat datang') && 
+                    !text.includes('Layanan Program Studi') &&
+                    !text.includes('Tentu, jelaskan apa yang ingin Anda tanyakan') &&
+                    !text.includes('Berikut adalah daftar pertanyaan') &&
+                    !text.includes('Nomor') &&
+                    !text.includes('tidak valid')) {
                     const explainButton = document.createElement('button');
                     explainButton.className = 'mt-2 px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors';
                     explainButton.textContent = 'Jelaskan Lebih Jelas';
                     explainButton.onclick = function() {
-                        chatInput.value = 'Jelaskan lebih jelas';
-                        chatForm.dispatchEvent(new Event('submit'));
+                        // Send the explain more request directly
+                        sendExplainMoreRequest();
                     };
                     content.appendChild(explainButton);
                 }
@@ -165,6 +226,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
                         message: userMsg,
+                        user_id: userId,
                         conversationHasStarted: conversationHasStarted,
                         isInitialGreetingSent: isInitialGreetingSent
                     })

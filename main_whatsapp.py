@@ -464,6 +464,8 @@ def api_chat():
     conversation_has_started = data.get("conversationHasStarted", False)
     is_initial_greeting_sent = data.get("isInitialGreetingSent", False)
 
+    print(f"[API_CHAT] Received message: '{message[:50]}...' from user_id: {user_id}")
+
     if not message:
         return jsonify({"error": "No message provided"}), 400
 
@@ -483,6 +485,7 @@ def api_chat():
     )
 
     # Pass conversation state to get_response
+    print(f"[API_CHAT] Calling get_response with user_id: {user_id}")
     response = get_response(
         message, user_id, conversation_has_started, is_initial_greeting_sent
     )
