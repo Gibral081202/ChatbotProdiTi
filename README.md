@@ -345,4 +345,3 @@ Proyek ini dilisensikan di bawah Lisensi MIT - lihat file LICENSE untuk detail.
 
 **Versi 1.4.5 - Chatbot akademik siap produksi dengan integrasi WhatsApp ganda, pipeline RAG canggih, dan dashboard admin komprehensif! 🎓🤖**
 
-
