@@ -58,9 +58,14 @@
         async function sendExplainMoreRequest() {
             const explainMsg = 'Jelaskan lebih jelas';
             
-            // Add user message to chat
-            chatHistory.push({ sender: 'user', text: explainMsg, ts: new Date() });
-            appendMessage(explainMsg, 'user', new Date());
+            // Clear the input field
+            chatInput.value = '';
+            
+            // Add user message to chat (only if not already added by form submit)
+            if (!chatHistory.some(msg => msg.sender === 'user' && msg.text === explainMsg)) {
+                chatHistory.push({ sender: 'user', text: explainMsg, ts: new Date() });
+                appendMessage(explainMsg, 'user', new Date());
+            }
             
             // Show loading
             const loadingRow = document.createElement('div');
@@ -201,6 +206,30 @@
             e.preventDefault();
             const userMsg = chatInput.value.trim();
             if (!userMsg) return;
+            
+            // Check if this is an "explain more" request
+            const explainMoreTriggers = [
+                'jelaskan lebih jelas',
+                'jelaskan lebih detail',
+                'jelaskan lebih lanjut',
+                'jelaskan lebih rinci',
+                'jelaskan lebih lengkap',
+                'explain more',
+                'tell me more',
+                'go into more detail',
+                'can you elaborate',
+                'give me more details'
+            ];
+            
+            const isExplainMoreRequest = explainMoreTriggers.some(trigger => 
+                userMsg.toLowerCase().includes(trigger.toLowerCase())
+            );
+            
+            if (isExplainMoreRequest) {
+                // Use the special explain more function
+                sendExplainMoreRequest();
+                return;
+            }
             
             // Hide suggestions when user submits a message
             if (suggestedQuestions) {

@@ -519,7 +519,12 @@ def handle_explain_more_request(user_id: Optional[str]) -> str:
     import time
     current_time = time.time()
     context_age = current_time - last_context.get("timestamp", 0)
+    print(f"[EXPLAIN] Context timestamp: {last_context.get('timestamp', 0)}")
+    print(f"[EXPLAIN] Current time: {current_time}")
+    print(f"[EXPLAIN] Context age: {context_age} seconds")
+    
     if context_age > 600:  # 10 minutes
+        print(f"[EXPLAIN] Context too old ({context_age} seconds), rejecting")
         return format_bot_response(
             "Maaf, respons sebelumnya sudah terlalu lama. "
             "Silakan ajukan pertanyaan baru yang ingin Anda ketahui.",
@@ -534,6 +539,8 @@ def handle_explain_more_request(user_id: Optional[str]) -> str:
     print(f"[EXPLAIN] Using context for query: '{original_query}'")
     print(f"[EXPLAIN] Context age: {context_age:.1f} seconds")
     print(f"[EXPLAIN] Response preview: {last_response[:100]}...")
+    print(f"[EXPLAIN] Context docs count: {len(context_docs)}")
+    print(f"[EXPLAIN] User ID: {user_id}")
     
     # Create specialized prompt for elaboration
     elaboration_prompt = f"""Anda adalah asisten AI layanan profesional untuk Program Studi Teknik Informatika UIN Syarif Hidayatullah Jakarta.
@@ -820,9 +827,13 @@ def get_response(query: str, user_id: Optional[str] = None, conversation_has_sta
         
         # Store the complete context for better "Explain More" functionality
         # This OVERWRITES any previous context to ensure we always have the most recent
+        import time
+        current_timestamp = time.time()
         store_last_bot_context(user_id, query, formatted_answer, context_docs)
         
         print(f"[RESPONSE] Stored context for user_id: {user_id}, query: '{query[:50]}...'")
+        print(f"[RESPONSE] Context docs count: {len(context_docs)}")
+        print(f"[RESPONSE] Timestamp: {current_timestamp}")
         return formatted_answer
     except Exception as e:
         print("=== FULL TRACEBACK ===")
