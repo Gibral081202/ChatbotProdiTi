@@ -795,6 +795,7 @@ def get_response(query: str, user_id: Optional[str] = None, conversation_has_sta
     ]
     
     if any(query_lower.startswith(trigger) for trigger in explain_more_triggers):
+        print(f"[EXPLAIN] Detected explain more request: '{query}' from user_id: {user_id}")
         return handle_explain_more_request(user_id)
 
     # 4. Isolate the RAG Pipeline

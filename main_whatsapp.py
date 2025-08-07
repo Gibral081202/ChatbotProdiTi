@@ -465,6 +465,19 @@ def api_chat():
     is_initial_greeting_sent = data.get("isInitialGreetingSent", False)
 
     print(f"[API_CHAT] Received message: '{message[:50]}...' from user_id: {user_id}")
+    
+    # Check if this is an explain more request
+    explain_more_triggers = [
+        "jelaskan lebih jelas",
+        "jelaskan lebih detail",
+        "jelaskan lebih lanjut",
+        "explain more",
+        "tell me more"
+    ]
+    
+    is_explain_more = any(trigger in message.lower() for trigger in explain_more_triggers)
+    if is_explain_more:
+        print(f"[API_CHAT] This is an explain more request from user_id: {user_id}")
 
     if not message:
         return jsonify({"error": "No message provided"}), 400

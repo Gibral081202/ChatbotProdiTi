@@ -54,51 +54,7 @@
         
         const userId = generateUserId();
         
-        // Function to send explain more request
-        async function sendExplainMoreRequest() {
-            const explainMsg = 'Jelaskan lebih jelas';
-            
-            // Clear the input field
-            chatInput.value = '';
-            
-            // Add user message to chat (only if not already added by form submit)
-            if (!chatHistory.some(msg => msg.sender === 'user' && msg.text === explainMsg)) {
-                chatHistory.push({ sender: 'user', text: explainMsg, ts: new Date() });
-                appendMessage(explainMsg, 'user', new Date());
-            }
-            
-            // Show loading
-            const loadingRow = document.createElement('div');
-            loadingRow.className = 'flex flex-col items-start';
-            loadingRow.id = 'loading-bot-msg';
-            const loadingContent = document.createElement('div');
-            loadingContent.className = 'max-w-[90%] px-4 py-3 rounded-2xl text-base mb-1 bg-gray-100 text-gray-500 border border-gray-200';
-            loadingContent.innerHTML = '<span class="animate-spin inline-block w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full mr-2"></span> Mengetik...';
-            loadingRow.appendChild(loadingContent);
-            chatMessages.appendChild(loadingRow);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-            
-            try {
-                const res = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        message: explainMsg,
-                        user_id: userId,
-                        conversationHasStarted: conversationHasStarted,
-                        isInitialGreetingSent: isInitialGreetingSent
-                    })
-                });
-                const data = await res.json();
-                document.getElementById('loading-bot-msg').remove();
-                chatHistory.push({ sender: 'bot', text: data.response, ts: new Date() });
-                appendMessage(data.response, 'bot', new Date());
-            } catch (err) {
-                document.getElementById('loading-bot-msg').remove();
-                chatHistory.push({ sender: 'bot', text: 'Terjadi kesalahan. Silakan coba lagi.', ts: new Date() });
-                appendMessage('Terjadi kesalahan. Silakan coba lagi.', 'bot', new Date());
-            }
-        }
+
         
         // Auto-scroll function
         function scrollToBottom(smooth = true) {
@@ -162,8 +118,46 @@
                     explainButton.className = 'mt-2 px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors';
                     explainButton.textContent = 'Jelaskan Lebih Jelas';
                     explainButton.onclick = function() {
-                        // Send the explain more request directly
-                        sendExplainMoreRequest();
+                        // Use the same approach as typing "Jelaskan Lebih Jelas"
+                        const explainMsg = 'Jelaskan lebih jelas';
+                        
+                        // Add user message to chat
+                        chatHistory.push({ sender: 'user', text: explainMsg, ts: new Date() });
+                        appendMessage(explainMsg, 'user', new Date());
+                        
+                        // Show loading
+                        const loadingRow = document.createElement('div');
+                        loadingRow.className = 'flex flex-col items-start';
+                        loadingRow.id = 'loading-bot-msg';
+                        const loadingContent = document.createElement('div');
+                        loadingContent.className = 'max-w-[90%] px-4 py-3 rounded-2xl text-base mb-1 bg-gray-100 text-gray-500 border border-gray-200';
+                        loadingContent.innerHTML = '<span class="animate-spin inline-block w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full mr-2"></span> Mengetik...';
+                        loadingRow.appendChild(loadingContent);
+                        chatMessages.appendChild(loadingRow);
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                        
+                        // Send request to API
+                        fetch('/api/chat', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ 
+                                message: explainMsg,
+                                user_id: userId,
+                                conversationHasStarted: conversationHasStarted,
+                                isInitialGreetingSent: isInitialGreetingSent
+                            })
+                        })
+                        .then(res => res.json())
+                        .then(data => {
+                            document.getElementById('loading-bot-msg').remove();
+                            chatHistory.push({ sender: 'bot', text: data.response, ts: new Date() });
+                            appendMessage(data.response, 'bot', new Date());
+                        })
+                        .catch(err => {
+                            document.getElementById('loading-bot-msg').remove();
+                            chatHistory.push({ sender: 'bot', text: 'Terjadi kesalahan. Silakan coba lagi.', ts: new Date() });
+                            appendMessage('Terjadi kesalahan. Silakan coba lagi.', 'bot', new Date());
+                        });
                     };
                     content.appendChild(explainButton);
                 }
@@ -226,9 +220,9 @@
             );
             
             if (isExplainMoreRequest) {
-                // Use the special explain more function
-                sendExplainMoreRequest();
-                return;
+                // Handle explain more request directly in the form submission
+                // The request will be processed normally through the API
+                // No special handling needed since the backend already handles it
             }
             
             // Hide suggestions when user submits a message
