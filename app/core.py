@@ -24,6 +24,9 @@ user_sessions: Dict[str, bool] = {}
 # Store last bot response for each user for "Explain More" feature
 last_bot_responses: Dict[str, str] = {}
 
+# Store last bot response with original query and context for better "Explain More"
+last_bot_context: Dict[str, Dict[str, Any]] = {}
+
 # Store user context for FAQ state management
 user_faq_context: Dict[str, str] = {}
 
@@ -239,6 +242,38 @@ def store_last_bot_response(user_id: str, response: str) -> None:
         last_bot_responses[user_id] = response
 
 
+def store_last_bot_context(user_id: str, query: str, response: str, context_docs: List[Document]) -> None:
+    """
+    Store the last bot response with its original query and context documents.
+    
+    Args:
+        user_id (str): User identifier
+        query (str): Original user query
+        response (str): Bot response
+        context_docs (List[Document]): Context documents used for the response
+    """
+    if user_id:
+        last_bot_context[user_id] = {
+            "query": query,
+            "response": response,
+            "context_docs": context_docs,
+            "timestamp": __import__('time').time()
+        }
+
+
+def get_last_bot_context(user_id: str) -> Optional[Dict[str, Any]]:
+    """
+    Get the last bot context for a user.
+    
+    Args:
+        user_id (str): User identifier
+        
+    Returns:
+        Optional[Dict]: Last bot context or None if not found
+    """
+    return last_bot_context.get(user_id)
+
+
 def get_last_bot_response(user_id: str) -> Optional[str]:
     """
     Get the last bot response for a user.
@@ -256,6 +291,8 @@ def clear_last_bot_response(user_id: str) -> None:
     """Clear the last bot response for a user."""
     if user_id in last_bot_responses:
         del last_bot_responses[user_id]
+    if user_id in last_bot_context:
+        del last_bot_context[user_id]
 
 
 def load_faq_data() -> List[Dict[str, str]]:
@@ -319,12 +356,28 @@ def get_faq_answer(question_number: int) -> Optional[str]:
     Returns:
         Optional[str]: The answer or None if invalid number
     """
-    faq_data = load_faq_data()
-    
-    if not faq_data or question_number < 1 or question_number > len(faq_data):
+    try:
+        faq_data = load_faq_data()
+        
+        if not faq_data:
+            print(f"FAQ Data is empty or not loaded")
+            return None
+            
+        if question_number < 1 or question_number > len(faq_data):
+            print(f"Invalid FAQ number: {question_number}. Valid range: 1-{len(faq_data)}")
+            return None
+        
+        answer = faq_data[question_number - 1].get('answer')
+        if not answer:
+            print(f"No answer found for FAQ number {question_number}")
+            return None
+            
+        print(f"Successfully retrieved answer for FAQ number {question_number}")
+        return answer
+        
+    except Exception as e:
+        print(f"Error getting FAQ answer for number {question_number}: {str(e)}")
         return None
-    
-    return faq_data[question_number - 1]['answer']
 
 
 def set_user_faq_context(user_id: str, context: str) -> None:
@@ -414,42 +467,94 @@ def handle_explain_more_request(user_id: Optional[str]) -> str:
     """
     if not user_id:
         return format_bot_response(
-            "Tentu, jelaskan apa yang ingin Anda tanyakan lebih lanjut?",
+            "Maaf, saya tidak memiliki respons sebelumnya untuk dijelaskan lebih detail. "
+            "Silakan ajukan pertanyaan spesifik yang ingin Anda ketahui.",
             is_successful_answer=False,
             is_faq_response=False
         )
     
-    last_response = get_last_bot_response(user_id)
-    if not last_response:
+    # Get the last bot context (includes original query, response, and documents)
+    last_context = get_last_bot_context(user_id)
+    if not last_context:
         return format_bot_response(
-            "Tentu, apa yang ingin Anda ketahui lebih detail?",
+            "Maaf, saya tidak memiliki respons sebelumnya untuk dijelaskan lebih detail. "
+            "Silakan ajukan pertanyaan baru yang ingin Anda ketahui.",
             is_successful_answer=False,
             is_faq_response=False
         )
     
-    # Create specialized prompt for elaboration using the exact template
-    elaboration_prompt = f"""You are a helpful and detailed expert. Your previous, more concise response to the user was:
+    # Check if the context is still recent (within 10 minutes)
+    import time
+    current_time = time.time()
+    context_age = current_time - last_context.get("timestamp", 0)
+    if context_age > 600:  # 10 minutes
+        return format_bot_response(
+            "Maaf, respons sebelumnya sudah terlalu lama. "
+            "Silakan ajukan pertanyaan baru yang ingin Anda ketahui.",
+            is_successful_answer=False,
+            is_faq_response=False
+        )
+    
+    original_query = last_context.get("query", "")
+    last_response = last_context.get("response", "")
+    context_docs = last_context.get("context_docs", [])
+    
+    # Create specialized prompt for elaboration
+    elaboration_prompt = f"""Anda adalah asisten AI Help Desk profesional untuk Program Studi Teknik Informatika UIN Syarif Hidayatullah Jakarta.
+
+Pertanyaan asli pengguna: "{original_query}"
+
+Respons Anda sebelumnya:
 ---
 {last_response}
 ---
-The user has now asked for a more detailed explanation ("Jelaskan Lebih Jelas"). Your task is to elaborate significantly on your previous answer. Break down complex concepts, provide definitions, use examples or analogies, and explain the 'why' behind the information. Do not simply rephrase the original answer. Make it deeper, richer, and more comprehensive."""
+
+Pengguna sekarang meminta penjelasan yang lebih detail ("Jelaskan Lebih Jelas") tentang respons Anda di atas.
+
+Tugas Anda:
+1. Berikan penjelasan yang LEBIH DETAIL dan MENDALAM tentang respons sebelumnya
+2. Pecah konsep-konsep kompleks menjadi bagian-bagian yang mudah dipahami
+3. Berikan contoh konkret jika memungkinkan
+4. Jelaskan "mengapa" di balik informasi yang diberikan
+5. Gunakan HANYA informasi dari konteks dokumen yang sama
+6. Tetap fokus pada topik respons sebelumnya
+7. Gunakan format Markdown yang rapi
+8. Jawab dalam Bahasa Indonesia yang profesional
+
+PENTING: Jangan menambahkan informasi baru di luar konteks respons sebelumnya. Fokus hanya pada penjelasan lebih detail dari apa yang sudah dijelaskan."""
     
     try:
-        # Use the same RAG chain but with the elaboration prompt
+        # Use the same context documents from the original response
+        if not context_docs:
+            return format_bot_response(
+                "Maaf, saya tidak dapat memberikan penjelasan lebih detail karena "
+                "tidak ada konteks dokumen dari respons sebelumnya. "
+                "Silakan ajukan pertanyaan baru.",
+                is_successful_answer=False,
+                is_faq_response=False
+            )
+        
+        # Load the LLM and document chain
         rag_chain, vector_store, embeddings, document_chain = create_rag_chain()
         
-        # Get the same context documents that were used for the original response
-        # We'll use a general query to get relevant context
-        hybrid_docs = hybrid_retrieve("", vector_store, embeddings, top_k=6)
-        context_docs = [
-            doc for doc in hybrid_docs
+        # Use the SAME context documents from the original response
+        valid_docs = [
+            doc for doc in context_docs
             if hasattr(doc, "page_content") and isinstance(doc.page_content, str)
         ]
         
-        # Generate detailed response
+        if not valid_docs:
+            return format_bot_response(
+                "Maaf, saya tidak dapat memberikan penjelasan lebih detail saat ini. "
+                "Silakan ajukan pertanyaan baru.",
+                is_successful_answer=False,
+                is_faq_response=False
+            )
+        
+        # Generate detailed response using the same context
         detailed_answer = document_chain.invoke({
             "input": elaboration_prompt, 
-            "documents": context_docs[:5]
+            "documents": valid_docs[:5]
         })
         
         if not detailed_answer or detailed_answer.strip() == "":
@@ -460,17 +565,25 @@ The user has now asked for a more detailed explanation ("Jelaskan Lebih Jelas").
                 is_faq_response=False
             )
         
-        return format_bot_response(
+        # Store this detailed response as the new last response
+        formatted_answer = format_bot_response(
             detailed_answer, 
             is_successful_answer=True, 
             is_faq_response=False
         )
         
+        # Update the stored context with the new detailed response
+        store_last_bot_context(user_id, original_query, formatted_answer, context_docs)
+        
+        return formatted_answer
+        
     except Exception as e:
         print(f"Error in handle_explain_more_request: {e}")
+        import traceback
+        traceback.print_exc()
         return format_bot_response(
             "Maaf, terjadi kesalahan saat memberikan penjelasan lebih detail. "
-            "Silakan coba lagi.",
+            "Silakan coba lagi atau ajukan pertanyaan baru.",
             is_successful_answer=False,
             is_faq_response=False
         )
@@ -483,8 +596,11 @@ The user has now asked for a more detailed explanation ("Jelaskan Lebih Jelas").
 def get_response(query: str, user_id: Optional[str] = None, conversation_has_started: bool = False, is_initial_greeting_sent: bool = False) -> str:
     # 1. Handle Empty/None Queries First
     if not query or not query.strip():
+        # Clear any previous context for fresh start
+        if user_id:
+            clear_last_bot_response(user_id)
         return format_bot_response(
-            "Halo! 👋 \n\nSelamat datang di Customer Service Program Studi "
+            "Halo! 👋 \n\nLayanan Program Studi "
             "Teknik Informatika UIN Syarif Hidayatullah Jakarta. \n\n"
             "Saya siap membantu Anda dengan informasi seputar kurikulum, "
             "mata kuliah, dosen, dan administrasi akademik. \n\n"
@@ -502,8 +618,11 @@ def get_response(query: str, user_id: Optional[str] = None, conversation_has_sta
     if query_lower in [
         "hi", "hello", "halo", "hai", "selamat pagi", "selamat siang", "selamat malam"
     ]:
+        # Clear any previous context for fresh start
+        if user_id:
+            clear_last_bot_response(user_id)
         return format_bot_response(
-            "Halo! 👋 \n\nSelamat datang di Customer Service Program Studi "
+            "Halo! 👋 \n\nLayanan Program Studi "
             "Teknik Informatika UIN Syarif Hidayatullah Jakarta. \n\n"
             "Saya siap membantu Anda dengan informasi seputar kurikulum, "
             "mata kuliah, dosen, dan administrasi akademik. \n\n"
@@ -526,23 +645,61 @@ def get_response(query: str, user_id: Optional[str] = None, conversation_has_sta
         if current_faq_context == "awaiting_faq_selection":
             try:
                 # Try to parse the input as a number
-                question_number = int(query.strip())
+                query_clean = query.strip().lower()
+                
+                # Handle common number formats
+                number_map = {
+                    "satu": "1", "dua": "2", "tiga": "3", "empat": "4", "lima": "5",
+                    "enam": "6", "tujuh": "7", "delapan": "8", "sembilan": "9", "sepuluh": "10",
+                    "sebelas": "11", "duabelas": "12", "tigabelas": "13", "empatbelas": "14",
+                    "limabelas": "15", "enambelas": "16", "tujuhbelas": "17", "delapanbelas": "18",
+                    "sembilanbelas": "19", "duapuluh": "20", "duapuluhsatu": "21", "duapuluhdua": "22"
+                }
+                
+                # Replace written numbers with digits
+                for word, digit in number_map.items():
+                    if query_clean == word:
+                        query_clean = digit
+                        break
+                
+                # Extract the first number from the query
+                import re
+                numbers = re.findall(r'\d+', query_clean)
+                if numbers:
+                    question_number = int(numbers[0])
+                else:
+                    question_number = int(query_clean)  # Will raise ValueError if not a number
+                
+                print(f"Processing FAQ request for number: {question_number}")
                 faq_answer = get_faq_answer(question_number)
                 
                 if faq_answer:
                     # Reset FAQ context after providing answer
                     set_user_faq_context(user_id, None)
-                    return format_bot_response(faq_answer, is_successful_answer=True, is_faq_response=True)
+                    formatted_answer = format_bot_response(faq_answer, is_successful_answer=True, is_faq_response=True)
+                    print(f"Sending FAQ answer for number {question_number}")
+                    
+                    # Clear any previous "Explain More" context since FAQ answers are complete
+                    clear_last_bot_response(user_id)
+                    
+                    return formatted_answer
                 else:
-                    return format_bot_response(
-                        f"Nomor {question_number} tidak valid. Silakan pilih nomor dari daftar di atas.",
-                        is_successful_answer=False,
-                        is_faq_response=True
-                    )
-            except ValueError:
+                    error_msg = f"Nomor {question_number} tidak valid. Silakan pilih nomor dari daftar di atas."
+                    print(f"Invalid FAQ number: {question_number}")
+                    return format_bot_response(error_msg, is_successful_answer=False, is_faq_response=True)
+            except ValueError as e:
+                print(f"Error parsing FAQ number from input '{query}': {str(e)}")
                 # If not a number, reset context and continue with normal processing
                 set_user_faq_context(user_id, None)
                 # Continue to normal processing below
+            except Exception as e:
+                print(f"Unexpected error handling FAQ request: {str(e)}")
+                set_user_faq_context(user_id, None)
+                return format_bot_response(
+                    "Maaf, terjadi kesalahan dalam memproses permintaan FAQ Anda. Silakan coba lagi.",
+                    is_successful_answer=False,
+                    is_faq_response=True
+                )
 
     # Check for "Explain More" triggers (case-insensitive)
     explain_more_triggers = [
@@ -594,6 +751,9 @@ def get_response(query: str, user_id: Optional[str] = None, conversation_has_sta
         # Store the bot response for "Explain More" feature
         formatted_answer = format_bot_response(answer, is_successful_answer=True, is_faq_response=False)
         store_last_bot_response(user_id, formatted_answer)
+        
+        # Store the complete context for better "Explain More" functionality
+        store_last_bot_context(user_id, query, formatted_answer, context_docs)
         
         return formatted_answer
     except Exception as e:
