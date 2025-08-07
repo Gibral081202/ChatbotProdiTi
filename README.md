@@ -1,6 +1,6 @@
-# 🎓 Customer Service Teknik Informatika UIN Jakarta
+# 🎓 Layanan Teknik Informatika UIN Jakarta
 
-Chatbot AI Customer Service untuk Program Studi Teknik Informatika UIN Syarif Hidayatullah Jakarta.
+Chatbot AI Layanan untuk Program Studi Teknik Informatika UIN Syarif Hidayatullah Jakarta.
 
 ## 🌟 Fitur Utama
 

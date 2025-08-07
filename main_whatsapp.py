@@ -168,8 +168,8 @@ def home():
     Home endpoint with basic information.
     """
     return """
-    <h1>🎓 Customer Service Teknik Informatika UIN Jakarta</h1>
-    <p>Ini adalah chatbot AI Customer Service untuk Program Studi Teknik Informatika UIN Syarif Hidayatullah Jakarta.</p>
+    <h1>🎓 Layanan Teknik Informatika UIN Jakarta</h1>
+    <p>Ini adalah chatbot AI Layanan untuk Program Studi Teknik Informatika UIN Syarif Hidayatullah Jakarta.</p>
     <p>Bot ini dapat menjawab pertanyaan dalam Bahasa Indonesia berdasarkan dokumen akademik yang tersedia.</p>
     
     <h3>Layanan yang Tersedia:</h3>
@@ -835,7 +835,7 @@ if __name__ == "__main__":
     # Get port from environment or default to 5000
     port = int(os.environ.get("PORT", 5000))
 
-    print(f"🚀 Starting Customer Service Teknik Informatika UIN Jakarta on port {port}")
+    print(f"🚀 Starting Layanan Teknik Informatika UIN Jakarta on port {port}")
     print("🇮🇩 Language: Indonesian")
     print("🎓 Service: Academic Information & Support")
     print("\nMake sure to:")
