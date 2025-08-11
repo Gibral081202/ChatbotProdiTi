@@ -1,6 +1,8 @@
-# 🎓 Layanan Teknik Informatika UIN Jakarta
+# 🎓 Layanan Fakultas Sains dan Teknologi UIN Jakarta
 
-Chatbot AI Layanan untuk Program Studi Teknik Informatika UIN Syarif Hidayatullah Jakarta.
+Chatbot AI Layanan untuk Fakultas Sains dan Teknologi UIN Syarif Hidayatullah Jakarta.
+
+*note: Informasi yang tersedia baru Program Studi Teknik Informatika
 
 ## 🌟 Fitur Utama
 
@@ -305,7 +307,9 @@ Setelah setup, akses dashboard LangSmith untuk melihat:
 
 ## 📚 Konteks Akademik
 
-Chatbot ini dirancang khusus untuk **Program Studi Teknik Informatika UIN Syarif Hidayatullah Jakarta** dan dapat menangani:
+Chatbot ini dirancang khusus untuk **Fakultas Sains dan Teknologi UIN Syarif Hidayatullah Jakarta** dan dapat menangani:
+
+*note: Informasi yang tersedia baru Program Studi Teknik Informatika
 
 - **Informasi kurikulum** dan katalog mata kuliah
 - **Kebijakan akademik** dan prosedur administrasi

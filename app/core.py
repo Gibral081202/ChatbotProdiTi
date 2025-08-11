@@ -168,7 +168,9 @@ def create_rag_chain():
     
     # SINGLE authoritative prompt for all responses
     prompt = ChatPromptTemplate.from_template(
-        """Anda adalah asisten AI layanan profesional, ramah, dan ahli untuk Program Studi Teknik Informatika UIN Syarif Hidayatullah Jakarta. Tugas Anda adalah menjawab pertanyaan berdasarkan informasi yang diberikan dalam <context> berikut.
+        """Anda adalah asisten AI layanan profesional, ramah, dan ahli untuk Fakultas Sains dan Teknologi UIN Syarif Hidayatullah Jakarta. Tugas Anda adalah menjawab pertanyaan berdasarkan informasi yang diberikan dalam <context> berikut.
+
+*note: Informasi yang tersedia baru Program Studi Teknik Informatika
 
 ### ATURAN MUTLAK:
 1. **Selalu jawab dalam Bahasa Indonesia yang baik, sopan, dan profesional.**
@@ -543,7 +545,9 @@ def handle_explain_more_request(user_id: Optional[str]) -> str:
     print(f"[EXPLAIN] User ID: {user_id}")
     
     # Create specialized prompt for elaboration
-    elaboration_prompt = f"""Anda adalah asisten AI layanan profesional untuk Program Studi Teknik Informatika UIN Syarif Hidayatullah Jakarta.
+    elaboration_prompt = f"""Anda adalah asisten AI layanan profesional untuk Fakultas Sains dan Teknologi UIN Syarif Hidayatullah Jakarta.
+
+*note: Informasi yang tersedia baru Program Studi Teknik Informatika
 
 PERTANYAAN ASLI PENGGUNA: "{original_query}"
 
@@ -649,12 +653,13 @@ def get_response(query: str, user_id: Optional[str] = None, conversation_has_sta
         if user_id:
             clear_last_bot_response(user_id)
         return format_bot_response(
-            "Halo! 👋 \n\nLayanan Program Studi "
-            "Teknik Informatika UIN Syarif Hidayatullah Jakarta. \n\n"
+            "Halo! 👋 \n\nLayanan Fakultas Sains dan Teknologi "
+            "UIN Syarif Hidayatullah Jakarta. \n\n"
             "Saya siap membantu Anda dengan informasi seputar kurikulum, "
             "mata kuliah, dosen, dan administrasi akademik. \n\n"
             "Silakan ajukan pertanyaan spesifik tentang informasi yang "
-            "Anda butuhkan! 😊",
+            "Anda butuhkan! 😊\n\n"
+            "*note: Informasi yang tersedia baru Program Studi Teknik Informatika",
             is_successful_answer=False,
             is_faq_response=False
         )
@@ -671,12 +676,13 @@ def get_response(query: str, user_id: Optional[str] = None, conversation_has_sta
         if user_id:
             clear_last_bot_response(user_id)
         return format_bot_response(
-            "Halo! 👋 \n\nLayanan Program Studi "
-            "Teknik Informatika UIN Syarif Hidayatullah Jakarta. \n\n"
+            "Halo! 👋 \n\nLayanan Fakultas Sains dan Teknologi "
+            "UIN Syarif Hidayatullah Jakarta. \n\n"
             "Saya siap membantu Anda dengan informasi seputar kurikulum, "
             "mata kuliah, dosen, dan administrasi akademik. \n\n"
             "Silakan ajukan pertanyaan spesifik tentang informasi yang "
-            "Anda butuhkan! 😊",
+            "Anda butuhkan! 😊\n\n"
+            "*note: Informasi yang tersedia baru Program Studi Teknik Informatika",
             is_successful_answer=False,
             is_faq_response=False
         )

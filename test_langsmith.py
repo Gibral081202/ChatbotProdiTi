@@ -32,7 +32,7 @@ def test_langsmith_integration():
     print("\n🧪 Testing LangSmith Integration:")
     
     # Test a simple query
-    test_query = "Apa itu Program Studi Teknik Informatika?"
+    test_query = "Apa itu Fakultas Sains dan Teknologi?"
     test_user_id = "test_user_123"
     
     print(f"  📝 Test Query: {test_query}")
