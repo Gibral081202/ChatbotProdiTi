@@ -684,9 +684,9 @@ def get_response(query: str, user_id: Optional[str] = None, conversation_has_sta
             "mata kuliah, dosen, dan administrasi akademik. \n\n"
             "Silakan ajukan pertanyaan spesifik tentang informasi yang "
             "Anda butuhkan! 😊\n\n"
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━\n"
             "*note: Informasi yang tersedia baru Program Studi Teknik Informatika\n"
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+            "━━━━━━━━━━━━━━━━━━━━━━━━━",
             is_successful_answer=False,
             is_faq_response=False
         )
