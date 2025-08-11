@@ -170,7 +170,9 @@ def home():
     return """
     <h1>🎓 Layanan Fakultas Sains dan Teknologi UIN Jakarta</h1>
     <p>Ini adalah chatbot AI Layanan untuk Fakultas Sains dan Teknologi UIN Syarif Hidayatullah Jakarta.</p>
+    <hr style="border: 1px solid #ccc; margin: 10px 0;">
     <p><em>*note: Informasi yang tersedia baru Program Studi Teknik Informatika</em></p>
+    <hr style="border: 1px solid #ccc; margin: 10px 0;">
     <p>Bot ini dapat menjawab pertanyaan dalam Bahasa Indonesia berdasarkan dokumen akademik yang tersedia.</p>
     
     <h3>Layanan yang Tersedia:</h3>
