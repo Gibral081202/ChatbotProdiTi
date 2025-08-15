@@ -29,6 +29,10 @@ last_bot_context: Dict[str, Dict[str, Any]] = {}
 
 # Store user context for FAQ state management
 user_faq_context: Dict[str, str] = {}
+user_faq_timestamps: Dict[str, float] = {}
+
+# FAQ context timeout in seconds (5 minutes)
+FAQ_CONTEXT_TIMEOUT = 300
 
 embedding_progress: Dict[str, Any] = {
     "status": "idle",
@@ -334,21 +338,99 @@ def get_faq_list() -> str:
     print(f"DEBUG: Loaded {len(faq_data)} FAQ items")
     print(f"DEBUG: First FAQ item: {faq_data[0] if faq_data else 'None'}")
     
-    faq_list = "Berikut adalah daftar pertanyaan yang sering diajukan:\n\n"
+    faq_list = "📋 **DAFTAR PERTANYAAN UMUM** 📋\n\n"
     
     for i, faq_item in enumerate(faq_data, 1):
-        line = f"{i}. {faq_item['question']}\n"
+        # Truncate long questions for better display
+        question = faq_item['question']
+        if len(question) > 80:
+            question = question[:77] + "..."
+        line = f"**{i}.** {question}\n"
         faq_list += line
         print(f"DEBUG: Added line {i}: {line.strip()}")
     
-    faq_list += "\nSilakan balas dengan NOMOR pertanyaan yang Anda inginkan "
-    faq_list += "(contoh: 2)."
+    faq_list += "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+    faq_list += "💡 **CARA MENGGUNAKAN:**\n"
+    faq_list += "• Ketik nomor pertanyaan (contoh: 5)\n"
+    faq_list += "• Atau ketik kata angka (contoh: lima)\n"
+    faq_list += "• Atau ketik 'nomor 5'\n\n"
+    faq_list += "🔍 **TOTAL PERTANYAAN:** " + str(len(faq_data)) + " pertanyaan\n"
+    faq_list += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     
     print(f"DEBUG: Final FAQ list length: {len(faq_list)}")
     debug_chars = repr(faq_list[:300])
     print(f"DEBUG: First 300 chars: {debug_chars}")
     
     return faq_list
+
+
+def get_faq_suggestions(query: str) -> List[Dict[str, str]]:
+    """
+    Get FAQ suggestions based on user query for better matching.
+    
+    Args:
+        query (str): User's query text
+        
+    Returns:
+        List[Dict[str, str]]: List of matching FAQ items with question and answer
+    """
+    faq_data = load_faq_data()
+    if not faq_data:
+        return []
+    
+    query_lower = query.lower()
+    suggestions = []
+    
+    # Keywords that might indicate what the user is looking for
+    keywords = {
+        'ukt': ['ukt', 'uang kuliah', 'biaya', 'pembayaran', 'bayar'],
+        'krs': ['krs', 'kartu rencana studi', 'pengisian', 'perbaikan'],
+        'cuti': ['cuti', 'cuti akademik', 'surat cuti'],
+        'skripsi': ['skripsi', 'sempro', 'semhas', 'sidang'],
+        'pkl': ['pkl', 'praktik kerja lapangan', 'kkn'],
+        'dosen': ['dosen', 'pembimbing', 'kontak dosen'],
+        'perpustakaan': ['perpustakaan', 'pinjam buku', 'perpustakaan fst'],
+        'wisuda': ['wisuda', 'pendaftaran wisuda', 'graduation'],
+        'beasiswa': ['beasiswa', 'scholarship', 'bantuan'],
+        'kalender': ['kalender', 'jadwal', 'akademik'],
+        'nilai': ['nilai', 'khs', 'hasil ujian'],
+        'mata kuliah': ['mata kuliah', 'matkul', 'sks', 'semester']
+    }
+    
+    # Find matching keywords
+    matched_keywords = []
+    for category, keyword_list in keywords.items():
+        if any(keyword in query_lower for keyword in keyword_list):
+            matched_keywords.append(category)
+    
+    # Score FAQ items based on keyword matches
+    scored_items = []
+    for i, faq_item in enumerate(faq_data, 1):
+        score = 0
+        question_lower = faq_item['question'].lower()
+        answer_lower = faq_item['answer'].lower()
+        
+        # Check for keyword matches
+        for category, keyword_list in keywords.items():
+            if category in matched_keywords:
+                if any(keyword in question_lower or keyword in answer_lower for keyword in keyword_list):
+                    score += 2
+        
+        # Check for direct word matches
+        query_words = query_lower.split()
+        for word in query_words:
+            if len(word) > 3 and (word in question_lower or word in answer_lower):
+                score += 1
+        
+        if score > 0:
+            scored_items.append((score, i, faq_item))
+    
+    # Sort by score and return top matches
+    scored_items.sort(reverse=True)
+    suggestions = [{'number': item[1], 'question': item[2]['question'], 'answer': item[2]['answer']} 
+                  for item in scored_items[:3]]
+    
+    return suggestions
 
 
 def get_faq_answer(question_number: int) -> Optional[str]:
@@ -405,28 +487,52 @@ def get_faq_answer(question_number: int) -> Optional[str]:
 
 def set_user_faq_context(user_id: str, context: str) -> None:
     """
-    Set the FAQ context for a user.
+    Set the FAQ context for a user with timestamp.
     
     Args:
         user_id (str): User identifier
         context (str): Context value ('awaiting_faq_selection' or None)
     """
+    import time
+    current_time = time.time()
+    
     if context:
         user_faq_context[user_id] = context
+        user_faq_timestamps[user_id] = current_time
+        print(f"[FAQ] Set context '{context}' for user {user_id} at {current_time}")
     elif user_id in user_faq_context:
         del user_faq_context[user_id]
+        if user_id in user_faq_timestamps:
+            del user_faq_timestamps[user_id]
+        print(f"[FAQ] Cleared context for user {user_id}")
 
 
 def get_user_faq_context(user_id: str) -> Optional[str]:
     """
-    Get the FAQ context for a user.
+    Get the FAQ context for a user, checking for timeout.
     
     Args:
         user_id (str): User identifier
         
     Returns:
-        Optional[str]: Current FAQ context or None
+        Optional[str]: Current FAQ context or None if expired
     """
+    import time
+    current_time = time.time()
+    
+    if user_id not in user_faq_context:
+        return None
+    
+    # Check if context has expired
+    if user_id in user_faq_timestamps:
+        context_age = current_time - user_faq_timestamps[user_id]
+        if context_age > FAQ_CONTEXT_TIMEOUT:
+            print(f"[FAQ] Context expired for user {user_id} (age: {context_age:.1f}s)")
+            # Clear expired context
+            del user_faq_context[user_id]
+            del user_faq_timestamps[user_id]
+            return None
+    
     return user_faq_context.get(user_id)
 
 
@@ -692,7 +798,7 @@ def get_response(query: str, user_id: Optional[str] = None, conversation_has_sta
         )
 
     # Handle FAQ commands (no longer conditional on user_id)
-    if query_lower in ["menu faq", "faq", "pertanyaan umum", "daftar pertanyaan"]:
+    if query_lower in ["menu faq", "faq", "pertanyaan umum", "daftar pertanyaan", "lihat faq", "tampilkan faq"]:
         faq_list = get_faq_list()
         if user_id:
             set_user_faq_context(user_id, "awaiting_faq_selection")
@@ -702,6 +808,43 @@ def get_response(query: str, user_id: Optional[str] = None, conversation_has_sta
     if user_id:
         current_faq_context = get_user_faq_context(user_id)
         if current_faq_context == "awaiting_faq_selection":
+            # Handle help commands
+            if query_lower in ["help", "bantuan", "tolong", "?", "??", "???"]:
+                faq_data = load_faq_data()
+                max_faq = len(faq_data) if faq_data else 0
+                
+                help_msg = (
+                    f"💡 **BANTUAN MENU FAQ** 💡\n\n"
+                    f"📋 **Total pertanyaan tersedia:** {max_faq}\n\n"
+                    f"🔢 **Cara memilih pertanyaan:**\n"
+                    f"• Ketik angka saja: 5\n"
+                    f"• Ketik kata angka: lima\n"
+                    f"• Ketik dengan 'nomor': nomor 5\n"
+                    f"• Ketik dengan 'no': no 5\n\n"
+                    f"📝 **Contoh input yang benar:**\n"
+                    f"• 1, 2, 3, 4, 5...\n"
+                    f"• satu, dua, tiga, empat, lima...\n"
+                    f"• nomor 1, nomor 2, nomor 3...\n"
+                    f"• no 1, no 2, no 3...\n\n"
+                    f"🔄 **Ketik 'Menu FAQ' untuk melihat daftar lengkap**\n"
+                    f"❓ **Ketik pertanyaan langsung jika tidak ada di FAQ**"
+                )
+                return format_bot_response(help_msg, is_successful_answer=False, is_faq_response=True)
+            
+            # Handle exit commands
+            if query_lower in ["keluar", "exit", "cancel", "batal", "selesai", "done", "stop"]:
+                set_user_faq_context(user_id, None)
+                exit_msg = (
+                    f"✅ **Keluar dari Menu FAQ**\n\n"
+                    f"Silakan ajukan pertanyaan Anda secara langsung. "
+                    f"Saya siap membantu dengan informasi seputar Fakultas Sains dan Teknologi UIN Jakarta! 😊"
+                )
+                return format_bot_response(exit_msg, is_successful_answer=False, is_faq_response=False)
+            
+            # Handle re-show FAQ list commands
+            if query_lower in ["lihat lagi", "tampilkan lagi", "daftar lagi", "list lagi", "show again"]:
+                faq_list = get_faq_list()
+                return format_bot_response(faq_list, is_successful_answer=False, is_faq_response=True)
             try:
                 print(f"[FAQ] Processing user input: {query}")
                 # Clean and normalize input
@@ -709,16 +852,50 @@ def get_response(query: str, user_id: Optional[str] = None, conversation_has_sta
                 query_clean = query_clean.replace("no", "nomor").replace("no.", "nomor")
                 query_clean = query_clean.replace(".", "").replace(",", "")
                 
-                # Handle common number formats
+                # Comprehensive number mapping for Indonesian and common formats
                 number_map = {
+                    # Basic numbers 1-35 (covering all FAQ items)
                     "satu": "1", "dua": "2", "tiga": "3", "empat": "4", "lima": "5",
                     "enam": "6", "tujuh": "7", "delapan": "8", "sembilan": "9", "sepuluh": "10",
                     "sebelas": "11", "duabelas": "12", "tigabelas": "13", "empatbelas": "14",
                     "limabelas": "15", "enambelas": "16", "tujuhbelas": "17", "delapanbelas": "18",
                     "sembilanbelas": "19", "duapuluh": "20", "duapuluhsatu": "21", "duapuluhdua": "22",
-                    # Add variations
-                    "tujuhbelas": "17", "delapanbelas": "18", "tigabelas": "13",
-                    "nomor 7": "7", "nomor 13": "13", "nomor 18": "18", "nomor 22": "22"
+                    "duapuluhtiga": "23", "duapuluhempat": "24", "duapuluhlima": "25",
+                    "duapuluhenam": "26", "duapuluhtujuh": "27", "duapuluhdelapan": "28",
+                    "duapuluhsembilan": "29", "tigapuluh": "30", "tigapuluhsatu": "31",
+                    "tigapuluhdua": "32", "tigapuluhtiga": "33", "tigapuluhempat": "34",
+                    "tigapuluhlima": "35",
+                    
+                    # Common variations and misspellings
+                    "pertama": "1", "kedua": "2", "ketiga": "3", "keempat": "4", "kelima": "5",
+                    "keenam": "6", "ketujuh": "7", "kedelapan": "8", "kesembilan": "9", "kesepuluh": "10",
+                    
+                    # Number with "nomor" prefix
+                    "nomor 1": "1", "nomor 2": "2", "nomor 3": "3", "nomor 4": "4", "nomor 5": "5",
+                    "nomor 6": "6", "nomor 7": "7", "nomor 8": "8", "nomor 9": "9", "nomor 10": "10",
+                    "nomor 11": "11", "nomor 12": "12", "nomor 13": "13", "nomor 14": "14", "nomor 15": "15",
+                    "nomor 16": "16", "nomor 17": "17", "nomor 18": "18", "nomor 19": "19", "nomor 20": "20",
+                    "nomor 21": "21", "nomor 22": "22", "nomor 23": "23", "nomor 24": "24", "nomor 25": "25",
+                    "nomor 26": "26", "nomor 27": "27", "nomor 28": "28", "nomor 29": "29", "nomor 30": "30",
+                    "nomor 31": "31", "nomor 32": "32", "nomor 33": "33", "nomor 34": "34", "nomor 35": "35",
+                    
+                    # Common abbreviations
+                    "no 1": "1", "no 2": "2", "no 3": "3", "no 4": "4", "no 5": "5",
+                    "no 6": "6", "no 7": "7", "no 8": "8", "no 9": "9", "no 10": "10",
+                    "no 11": "11", "no 12": "12", "no 13": "13", "no 14": "14", "no 15": "15",
+                    "no 16": "16", "no 17": "17", "no 18": "18", "no 19": "19", "no 20": "20",
+                    "no 21": "21", "no 22": "22", "no 23": "23", "no 24": "24", "no 25": "25",
+                    "no 26": "26", "no 27": "27", "no 28": "28", "no 29": "29", "no 30": "30",
+                    "no 31": "31", "no 32": "32", "no 33": "33", "no 34": "34", "no 35": "35",
+                    
+                    # English numbers (for bilingual users)
+                    "one": "1", "two": "2", "three": "3", "four": "4", "five": "5",
+                    "six": "6", "seven": "7", "eight": "8", "nine": "9", "ten": "10",
+                    "eleven": "11", "twelve": "12", "thirteen": "13", "fourteen": "14", "fifteen": "15",
+                    "sixteen": "16", "seventeen": "17", "eighteen": "18", "nineteen": "19", "twenty": "20",
+                    "twentyone": "21", "twentytwo": "22", "twentythree": "23", "twentyfour": "24", "twentyfive": "25",
+                    "twentysix": "26", "twentyseven": "27", "twentyeight": "28", "twentynine": "29", "thirty": "30",
+                    "thirtyone": "31", "thirtytwo": "32", "thirtythree": "33", "thirtyfour": "34", "thirtyfive": "35"
                 }
                 
                 # First try exact matches with number_map
@@ -746,12 +923,20 @@ def get_response(query: str, user_id: Optional[str] = None, conversation_has_sta
                                 print(f"[FAQ] Converted whole query to number: {question_number}")
                             except ValueError:
                                 print(f"[FAQ] Could not extract number from: {query_clean}")
-                                return format_bot_response(
-                                    "Maaf, saya tidak dapat mengenali nomor pertanyaan yang Anda maksud. "
-                                    "Silakan ketik nomor pertanyaan yang ingin Anda tanyakan (contoh: 7).",
-                                    is_successful_answer=False,
-                                    is_faq_response=True
+                                # Get FAQ data to show valid range
+                                faq_data = load_faq_data()
+                                max_faq = len(faq_data) if faq_data else 0
+                                
+                                error_msg = (
+                                    f"❌ **Maaf, saya tidak dapat mengenali nomor pertanyaan.**\n\n"
+                                    f"💡 **Cara yang benar:**\n"
+                                    f"• Ketik angka saja (contoh: 5)\n"
+                                    f"• Atau ketik kata angka (contoh: lima)\n"
+                                    f"• Atau ketik 'nomor 5'\n\n"
+                                    f"📋 **Rentang yang valid:** 1 sampai {max_faq}\n\n"
+                                    f"🔄 **Ketik 'Menu FAQ' untuk melihat daftar lagi**"
                                 )
+                                return format_bot_response(error_msg, is_successful_answer=False, is_faq_response=True)
                 
                 print(f"[FAQ] Final question number: {question_number}")
                 faq_answer = get_faq_answer(question_number)
@@ -759,7 +944,10 @@ def get_response(query: str, user_id: Optional[str] = None, conversation_has_sta
                 if faq_answer:
                     # Reset FAQ context after providing answer
                     set_user_faq_context(user_id, None)
-                    formatted_answer = format_bot_response(faq_answer, is_successful_answer=True, is_faq_response=True)
+                    
+                    # Add success indicator and navigation help
+                    success_prefix = f"✅ **Pertanyaan #{question_number}**\n\n"
+                    formatted_answer = format_bot_response(success_prefix + faq_answer, is_successful_answer=True, is_faq_response=True)
                     print(f"[FAQ] Sending FAQ answer for number {question_number}")
                     
                     # Clear any previous "Explain More" context since FAQ answers are complete
@@ -767,14 +955,53 @@ def get_response(query: str, user_id: Optional[str] = None, conversation_has_sta
                     
                     return formatted_answer
                 else:
-                    error_msg = f"Nomor {question_number} tidak valid. Silakan pilih nomor dari daftar di atas."
+                    # Get FAQ data to show valid range
+                    faq_data = load_faq_data()
+                    max_faq = len(faq_data) if faq_data else 0
+                    
+                    error_msg = (
+                        f"❌ **Nomor {question_number} tidak valid!**\n\n"
+                        f"📋 **Rentang yang tersedia:** 1 sampai {max_faq}\n\n"
+                        f"💡 **Contoh input yang benar:**\n"
+                        f"• {question_number - 1} (nomor sebelumnya)\n"
+                        f"• {min(question_number + 1, max_faq)} (nomor berikutnya)\n"
+                        f"• Atau pilih nomor lain dari daftar\n\n"
+                        f"🔄 **Ketik 'Menu FAQ' untuk melihat daftar lengkap**"
+                    )
                     print(f"Invalid FAQ number: {question_number}")
                     return format_bot_response(error_msg, is_successful_answer=False, is_faq_response=True)
             except ValueError as e:
                 print(f"Error parsing FAQ number from input '{query}': {str(e)}")
-                # If not a number, reset context and continue with normal processing
-                set_user_faq_context(user_id, None)
-                # Continue to normal processing below
+                # Check if the input might be a question that should be answered by the AI
+                if any(word in query_lower for word in ["bagaimana", "apa", "kapan", "dimana", "berapa", "siapa", "mengapa", "kenapa", "what", "how", "when", "where", "why", "who"]):
+                    print(f"[FAQ] Input appears to be a question, resetting FAQ context and processing normally")
+                    set_user_faq_context(user_id, None)
+                    # Continue to normal processing below
+                else:
+                    # If not a question, provide helpful guidance with suggestions
+                    faq_data = load_faq_data()
+                    max_faq = len(faq_data) if faq_data else 0
+                    
+                    # Try to provide relevant FAQ suggestions based on the input
+                    suggestions = get_faq_suggestions(query)
+                    
+                    error_msg = (
+                        f"❓ **Input tidak dikenali sebagai nomor pertanyaan.**\n\n"
+                        f"💡 **Jika Anda ingin:**\n"
+                        f"• **Memilih FAQ:** Ketik nomor 1-{max_faq}\n"
+                        f"• **Bertanya langsung:** Ketik pertanyaan Anda\n"
+                        f"• **Lihat FAQ lagi:** Ketik 'Menu FAQ'\n\n"
+                    )
+                    
+                    if suggestions:
+                        error_msg += f"🔍 **Mungkin Anda mencari ini:**\n"
+                        for suggestion in suggestions:
+                            question_short = suggestion['question'][:60] + "..." if len(suggestion['question']) > 60 else suggestion['question']
+                            error_msg += f"• **{suggestion['number']}.** {question_short}\n"
+                        error_msg += "\n"
+                    
+                    error_msg += f"🔄 **Contoh:** '5', 'lima', 'nomor 5', atau 'Bagaimana cara KRS?'"
+                    return format_bot_response(error_msg, is_successful_answer=False, is_faq_response=True)
             except Exception as e:
                 print(f"Unexpected error handling FAQ request: {str(e)}")
                 set_user_faq_context(user_id, None)
